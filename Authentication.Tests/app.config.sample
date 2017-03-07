@@ -1,5 +1,26 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <configuration>
+  <configSections>
+    <sectionGroup name="lnf">
+      <section name="providers" type="LNF.ProvidersSection, LNF" />
+      <section name="redis" type="LNF.Impl.Redis.RedisConfigurationSection, LNF.Impl" />
+    </sectionGroup>
+  </configSections>
+
+  <lnf>
+    <providers production="false">
+      <context type="Authentication.Models.OwinRequestContextProvider, Authentication" loginUrl="/login" />
+      <dataAccess type="LNF.Impl.NHibernateWebDataAccess, LNF.Impl" universalPassword="*****" showSql="true" />
+      <serialization type="LNF.Impl.Serialization.SerializationProvider, LNF.Impl" />
+      <encryption type="LNF.Impl.EncryptionProvider, LNF.Impl" />
+      <email type="LNF.Impl.Email.EmailProvider, LNF.Impl" host="127.0.0.1" />
+      <log type="LNF.Impl.Logging.ServiceLogProvider, LNF.Impl" name="Authentication" enabled="true" />
+    </providers>
+    <redis>
+      <connection host="cachesvr" databaseId="5" />
+    </redis>
+  </lnf>
+
   <appSettings>
     <add key="as:AudienceId" value="xxxxx"/>
     <add key="as:AudienceSecret" value="xxxxx"/>
