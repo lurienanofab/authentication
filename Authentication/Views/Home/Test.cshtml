@@ -1,0 +1,57 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>Test</title>
+</head>
+<body>
+    <div>
+        <div>Current user: @ViewBag.UserName</div>
+        <button class="test">Test</button>
+        <div class="message"></div>
+    </div>
+    <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
+    <script>
+        function lnfapi() {
+
+            this.login = function (un, pw) {
+
+                var def = $.Deferred();
+
+                $.ajax({
+                    "url": "/login/token",
+                    "type": "POST",
+                    "data": { "grant_type": "password", "username": un, "password": pw }
+                }).done(function (data) {
+                    def.resolve({
+                        getCurrentUser: function () {
+                            return $.ajax({
+                                "url": "/login/api/user/current",
+                                "type": "GET",
+                                "headers": {"Authorization": "Bearer " + data.access_token}
+                            });
+                        }
+                    })
+                }).fail(def.reject);
+
+                return def.promise();
+            };
+        }
+
+        var api = new lnfapi();
+
+        $('.test').on("click", function (e) {
+            api.login('jgett', 'lnfmgr').done(function (x) {
+                x.getCurrentUser().done(function (data) {
+                    console.log(data);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

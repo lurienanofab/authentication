@@ -1,0 +1,95 @@
+﻿@using Authentication.Models;
+@model LoginModel
+@{
+    ViewBag.Title = "LNF Online Services Log In";
+}
+<div class="container">
+
+    <div class="wrapper">
+
+        <div class="background hidden-xs">
+        </div>
+
+        <div class="mobile-background visible-xs-block">
+        </div>
+
+        <div class="control-box">
+            <div class="visible-lg-block spacer"></div>
+            <div class="visible-md-block spacer"></div>
+            <div class="visible-sm-block spacer"></div>
+            <div class="visible-xs-block spacer"></div>
+            <div class="visible-xs-block mobile-title">
+                LNF Online Services
+            </div>
+            <div class="row">
+                <div class="col-lg-4 col-md-3 col-sm-3 hidden-xs"></div>
+                <div class="col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                    @ViewBag.KioskMessage
+                    @ViewBag.MobileKioskMessage
+                    @ViewBag.ErrorMessage
+                    @ViewBag.MobileErrorMessage
+                    @using (Html.BeginForm("SignInAsync", "Login", new { ReturnUrl = Model.ReturnUrl }, FormMethod.Post, new { @class = "form-horizontal" }))
+                    {
+                        <div class="form-group">
+                            @Html.LabelFor(x => x.UserName, new { @class = "col-sm-4 control-label" })
+                            <div class="col-sm-8">
+                                @Html.TextBoxFor(x => x.UserName, new { @class = "form-control" })
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            @Html.LabelFor(x => x.Password, new { @class = "col-sm-4 control-label" })
+                            <div class="col-sm-8">
+                                @Html.PasswordFor(x => x.Password, new { @class = "form-control" })
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="col-sm-offset-4 col-sm-8">
+                                <button type="submit" class="enter-button btn btn-primary"></button>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="col-lg-4 col-md-3 col-sm-3 hidden-xs"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@*<div class="login">
+        <table class="wrapper">
+            <tr>
+                <td>
+                    <div class="login-box">
+                        @using (Html.BeginForm("Index", "Home", FormMethod.Post))
+                        {
+                            @Html.HiddenFor(x => x.ReturnServer)
+                            @Html.HiddenFor(x => x.ReturnUrl)
+                            <table class="controls">
+                                <tr>
+                                    <td colspan="2" style="text-align: center;">@ViewBag.KioskMessage</td>
+                                </tr>
+                                <tr>
+                                    <td class="label">&nbsp;</td>
+                                    <td>@Html.TextBoxFor(x => x.Username, new { @class = "username-text" })</td>
+                                </tr>
+                                <tr>
+                                    <td class="label">&nbsp;</td>
+                                    <td>@Html.PasswordFor(x => x.Password, new { @class = "password-text" })</td>
+                                </tr>
+                                <tr>
+                                    <td class="label">&nbsp;</td>
+                                    <td style="text-align: center;"><input type="image" src="@Url.Content("~/Styles/images/enter-button.jpg")" alt="Enter" class="enter-button" /></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" style="text-align: center;">
+                                        @ViewBag.Message
+                                    </td>
+                                </tr>
+                            </table>
+                        }
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>*@

@@ -1,0 +1,11 @@
+.vs/
+bin/
+obj/
+packages/
+TestResults/
+*.suo
+*.user
+Authentication/Web.config
+Authentication/Web.Debug.config
+Authentication/Web.Release.config
+Authentication.Tests/app.config

@@ -1,0 +1,108 @@
+﻿html, body {
+    height: 100%;
+}
+
+body {
+    background-color: #5050ff;
+    padding: 20px;
+}
+
+.login-container {
+    margin: 0 auto;
+    border: solid 1px #ddddff;
+    border-radius: 4px;
+    background-color: rgba(255,255,255, 0.6);
+    background-repeat: no-repeat;
+    padding: 10px;
+}
+
+    .login-container .form-login .form-login-heading {
+    }
+
+    .login-container .form-login-heading .form-login-heading-background {
+        background-image: url(images/lnf-logo-blue-text-transparent.png);
+        background-repeat: no-repeat;
+        background-position: top center;
+        background-size: contain;
+        height: 80px;
+    }
+
+    .login-container .form-login-heading .form-login-heading-text {
+        color: #fefeff;
+        font-variant: small-caps;
+        text-shadow: 2px 2px 2px #333;
+        font-size: 25px;
+        font-weight: bold;
+        text-align: center;
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+
+    .login-container .form-login .enter-button {
+        background-color: transparent;
+        background-image: url(images/enter-button.jpg);
+        background-repeat: no-repeat;
+        border: none;
+        display: block;
+        height: 35px;
+        width: 169px;
+    }
+
+    .login-container .error-message {
+        font-weight: bold;
+        padding: 5px;
+        margin-top: 10px;
+        margin-bottom: 5px;
+        text-align: center;
+    }
+
+    .login-container .kiosk-message {
+        font-weight: bold;
+        padding: 5px;
+        color: yellow;
+        font-size: 12pt;
+        text-align: center;
+    }
+
+    .login-container .form-login .control-label {
+        padding-top: 2px;
+        font-size: 16pt;
+        font-weight: bold;
+        color: #fff;
+        font-variant: small-caps;
+        text-shadow: 2px 2px 2px #333;
+    }
+
+/* Small Devices, Tablets */
+@media only screen and (min-width : 768px) {
+    .login-container .form-login .form-login-heading .form-login-heading-background {
+        height: 120px;
+    }
+
+    .login-container .form-login {
+        margin: 0 auto;
+    }
+}
+
+/* Medium Devices, Desktops */
+@media only screen and (min-width : 992px) {
+    .login-container {
+        max-width: 1024px;
+        height: 100%;
+        padding-top: 120px;
+        background-color: #5050ff;
+        background-image: url(images/lnf-login-screen2.jpg);
+        background-position: top center;
+        background-size: contain;
+        border: none;
+    }
+
+        .login-container .login-form-wrapper {
+            width: 350px;
+            margin: 0 auto;
+        }
+
+        .login-container .form-login-heading {
+            display: none;
+        }
+}

@@ -1,0 +1,203 @@
+﻿
+html, body {
+    padding: 0;
+    margin: 0;
+    height: 100%;
+    background-color: #5050ff;
+    font-size: 10px;
+}
+
+.container {
+    height: 100%;
+}
+
+.wrapper {
+    height: 100%;
+    position: relative;
+}
+
+.background {
+    width: 100%;
+    height: 100%;
+    max-width: 1024px;
+    max-height: 768px;
+    min-width: 256px;
+    min-height: 768px;
+    margin: 40px auto;
+    padding: 20px;
+    background-image: url(images/lnf-login-screen2.jpg);
+    background-repeat: no-repeat;
+    background-position: center 0;
+    background-size: contain;
+}
+
+.mobile-background {
+    margin-top: 10px;
+    border: solid 1px #808080;
+    border-radius: 4px;
+    background-color: rgba(255,255,255,0.8);
+    background-image: url(images/lnf-logo-blue-text-transparent.png);
+    background-repeat: no-repeat;
+    background-position: top right;
+    background-size: 20%;
+    height: 75%;
+    padding: 10px;
+}
+
+.mobile-title {
+    color: #fefeff;
+    text-shadow: 2px 2px 2px #333;
+    font-size: 30px;
+    font-weight: bold;
+    border-bottom: solid 1px #ccc;
+    margin-bottom: 10px;
+}
+
+.control-box {
+    position: absolute;
+    top: 0;
+    width: 100%;
+    padding: 20px;
+}
+
+    .control-box .spacer {
+        /*background-color: rgba(255,0,0,0.2);*/
+    }
+
+        .control-box .spacer.visible-lg-block {
+            height: 100px;
+        }
+
+        .control-box .spacer.visible-md-block {
+            height: 80px;
+        }
+
+        .control-box .spacer.visible-sm-block {
+            height: 65px;
+        }
+
+        .control-box .spacer.visible-xs-block {
+            height: 0px;
+        }
+
+    .control-box .form-group > .control-label {
+        padding-top: 2px;
+        font-size: 16pt;
+        font-weight: bold;
+        color: #fff;
+        font-variant: small-caps;
+        text-shadow: 2px 2px 2px #333;
+    }
+
+    .control-box .enter-button {
+        background-color: transparent;
+        background-image: url(images/enter-button.jpg);
+        background-repeat: no-repeat;
+        border: none;
+        display: block;
+        height: 35px;
+        width: 169px;
+        margin-top: 10px;
+    }
+
+    .control-box .mobile-kiosk-message,
+    .control-box .mobile-error-message {
+        font-weight: bold;
+        font-size: 15px;
+        padding: 5px;
+        margin-bottom: 5px;
+    }
+
+    .control-box .error-message{
+        font-weight: bold;
+        font-size: 15px;
+        text-align: center;
+        padding: 5px;
+        margin-bottom: 10px;
+    }
+
+    .control-box .kiosk-message{
+        color:#f7fe2e; 
+        font-weight: bold;
+        font-size: 15px;
+        text-align: center;
+        padding: 5px;
+        margin-bottom: 5px;
+    }
+/*
+
+
+.page {
+    width: 100%;
+    height: 100%;
+}
+
+.login {
+    width: 100%;
+    height: 100%;
+}
+
+    .login table.wrapper {
+        height: 100%;
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        .login table.wrapper > td {
+            vertical-align: middle;
+        }
+
+.login-box {
+    position: relative;
+    margin: 0 auto;
+    width: 1024px;
+    height: 768px;
+    background: #5050FF url('images/lnf-login-screen.jpg') no-repeat center center;
+}
+
+    .login-box table.controls {
+        position: absolute;
+        top: 130px;
+        left: 350px;
+        border-collapse: separate;
+    }
+
+        .login-box table.controls td {
+            padding: 5px;
+            /border: solid 1px #b6ff00;/
+            border: solid 1px transparent;
+        }
+
+            .login-box table.controls td.label {
+                width: 110px;
+            }
+
+    .login-box .username-text {
+        width: 169px;
+    }
+
+    .login-box .password-text {
+        width: 169px;
+    }
+
+    .login-box .enter-button {
+    }
+
+    .login-box .message {
+        text-align: center;
+        font-family: Arial;
+    }
+
+.error {
+    color: #FF0000;
+    background-color: #F3F781;
+    border: #F7FE2E ridge;
+    font-weight: bold;
+    padding: 10px;
+}
+
+.kiosk {
+    color: #F7FE2E;
+    font-weight: bold;
+}
+*/

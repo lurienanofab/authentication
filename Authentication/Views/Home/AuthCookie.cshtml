@@ -1,0 +1,31 @@
+﻿@{
+    Layout = null;
+    string returnUrl = ViewBag.ReturnUrl != null ? ViewBag.ReturnUrl.ToString() : "";
+    string cookieValue = ViewBag.CookieValue != null ? ViewBag.CookieValue.ToString() : "";
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>AuthCookie</title>
+</head>
+<body>
+    @if (!string.IsNullOrEmpty(returnUrl))
+    {
+        <form id="form1" action="@returnUrl" method="POST">
+            <input type="hidden" name="cookieValue" value="@cookieValue" />
+        </form>
+        <script>
+            document.getElementById('form1').submit();
+        </script>
+    }
+    else
+    {
+        <div>
+            <textarea name="cookieValue" id="cookieValue" cols="5" rows="10" style="width: 800px; height: 150px;">@cookieValue</textarea>
+        </div>
+    }
+</body>
+</html>
