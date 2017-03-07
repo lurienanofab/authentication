@@ -15,6 +15,7 @@
       <encryption type="LNF.Impl.EncryptionProvider, LNF.Impl" />
       <email type="LNF.Impl.Email.EmailProvider, LNF.Impl" host="127.0.0.1" />
       <log type="LNF.Impl.Logging.ServiceLogProvider, LNF.Impl" name="Authentication" enabled="true" />
+      <modelFactory type="LNF.Impl.ModelFactory.ValueInjecterModelFactory, LNF.Impl" />
     </providers>
     <redis>
       <connection host="cachesvr" databaseId="5" />
