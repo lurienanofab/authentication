@@ -1,7 +1,10 @@
-﻿@model Authentication.Models.HomeModel
+﻿@using Authentication.Models;
+@using LNF;
+
+@model HomeModel
 @{
     ViewBag.Title = "LNF Online Services Log In";
-    object formRouteValues = ViewBag.FormRouteValues;
+    string errmsg = ViewBag.ErrorMessage;
 }
 
 @section styles{
@@ -16,11 +19,13 @@
     </div>
 
     <div class="login-form-wrapper">
-
-        @ViewBag.KioskMessage
-
-        @using (Html.BeginForm("SignIn", "Home", formRouteValues, FormMethod.Post, new { @class = "form-horizontal form-login" }))
+        @using (Html.BeginForm("Index", "Home", new { Model.ReturnServer, Model.ReturnUrl }, FormMethod.Post, new { @class = "form-horizontal form-login" }))
         {
+            <div class="form-group">
+                <div class="col-md-offset-4 col-md-8">
+                    @ViewBag.KioskMessage
+                </div>
+            </div>
             <div class="form-group">
                 @Html.LabelFor(x => x.UserName, "Username", new { @class = "col-md-4 control-label" })
                 <div class="col-md-8">
@@ -40,8 +45,21 @@
             </div>
         }
 
-        @ViewBag.ErrorMessage
+        @if (!string.IsNullOrEmpty(errmsg))
+        {
+            <div class="alert alert-danger" role="alert">
+                @Html.Raw(errmsg)
+            </div>
+        }
 
+        @if (!Providers.IsProduction())
+        {
+            <div class="alert alert-danger" role="alert">
+                <strong style="font-size: larger;">THIS THE DEVELOPMENT SITE!</strong><br /><br />
+                ANY RESERVATIONS MADE ON THE DEVELOPEMENT SITE ARE NOT VALID.<br /><br />
+                IF YOU CAME HERE BY ACCIDENT PLEASE GO <a href="https://ssel-apps.eecs.umich.edu/login">HERE</a> TO LOG IN.
+            </div>
+        }
     </div>
 
 </div>

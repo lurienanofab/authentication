@@ -11,7 +11,7 @@ body {
     margin: 0 auto;
     border: solid 1px #ddddff;
     border-radius: 4px;
-    background-color: rgba(255,255,255, 0.6);
+    background-color: rgba(255,255,255, 0.2);
     background-repeat: no-repeat;
     padding: 10px;
 }
@@ -58,10 +58,10 @@ body {
 
     .login-container .kiosk-message {
         font-weight: bold;
-        padding: 5px;
+        /*padding: 5px;*/
         color: yellow;
         font-size: 12pt;
-        text-align: center;
+        /*text-align: center;*/
     }
 
     .login-container .form-login .control-label {
@@ -72,6 +72,13 @@ body {
         font-variant: small-caps;
         text-shadow: 2px 2px 2px #333;
     }
+
+
+@media only screen and (max-width : 768px) {
+    .login-container {
+        box-shadow: 5px 5px 20px #222;
+    }
+}
 
 /* Small Devices, Tablets */
 @media only screen and (min-width : 768px) {
@@ -100,6 +107,29 @@ body {
         .login-container .login-form-wrapper {
             width: 350px;
             margin: 0 auto;
+        }
+
+        .login-container .form-login-heading {
+            display: none;
+        }
+}
+
+@media only screen and (min-width : 2560px) {
+    .login-container {
+        max-width: 1600px;
+        height: 100%;
+        padding-top: 120px;
+        background-color: #5050ff;
+        background-image: url(images/lnf-login-screen2.jpg);
+        background-position: top center;
+        background-size: contain;
+        border: none;
+    }
+
+        .login-container .login-form-wrapper {
+            width: 400px;
+            margin: 0 auto;
+            margin-top: 40px;
         }
 
         .login-container .form-login-heading {

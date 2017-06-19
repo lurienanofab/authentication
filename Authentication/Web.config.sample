@@ -27,10 +27,11 @@
   </lnf>
 
   <connectionStrings>
-    <add name="cnSselData" connectionString="Server=dbserver,1435;Database=sselData;User ID=xxxxx;Password=xxxxx" providerName="System.Data.SqlClient"/>
+    <add name="cnSselData" connectionString="*****" providerName="System.Data.SqlClient"/>
   </connectionStrings>
 
   <appSettings>
+    <add key="SecretKey" value="*****" />
     <add key="RequireSSL.OnNonKiosk" value="false"/>
     <add key="RequireSSL.OnKiosk" value="false"/>
     <add key="DefaultReturnServer" value="{self}"/>

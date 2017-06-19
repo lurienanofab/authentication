@@ -1,10 +1,10 @@
 ﻿using Authentication.Models;
 using LNF.Cache;
 using LNF.Models.Data;
-using LNF.Repository.Data;
 using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.Security;
@@ -13,81 +13,36 @@ namespace Authentication.Controllers
 {
     public class HomeController : Controller
     {
-        [Route("")]
-        public ActionResult Index(HomeModel model, string client_id = null, string redirect_uri = null, string state = null)
+        [HttpGet, Route("")]
+        public ActionResult Index(string returnServer = null, string returnUrl = null)
         {
-            if (!string.IsNullOrEmpty(client_id))
-            {
-                int statusCode = 0;
-                string errorMessage = string.Empty;
-
-                //always validate the clientId
-                //var validateResult = OAuthManager.Validate(client_id, redirect_uri);
-                //if (validateResult.StatusCode == HttpStatusCode.OK)
-                bool skip = true;
-                if (skip)
-                {
-                    ViewBag.FormRouteValues = new { client_id, redirect_uri, state };
-                    return LogInView(model);
-                }
-                else
-                {
-                    //statusCode = (int)validateResult.StatusCode;
-                    //errorMessage = validateResult.ErrorMessage;
-                }
-
-                Response.StatusCode = statusCode;
-
-                return Json(new { statusCode, errorMessage }, JsonRequestBehavior.AllowGet);
-            }
-            else
-            {
-                ViewBag.FormRouteValues = new { ReturnServer = model.ReturnServer, ReturnUrl = model.ReturnUrl };
-                return LogInView(model);
-            }
+            var model = new HomeModel() { ReturnServer = returnServer, ReturnUrl = returnUrl };
+            return LogInView(model);
         }
 
-        [HttpPost, Route("signin")]
-        public async Task<ActionResult> SignIn(HomeModel model, string client_id = null, string redirect_uri = null, string state = null)
+        [HttpPost, Route("")]
+        public ActionResult Index(HomeModel model)
         {
-            var loginResult = await model.LogIn();
+            var result = model.LogIn();
 
-            if (loginResult.Success)
+            if (result.Success)
             {
-                string redirectUrl;
-
-                if (!string.IsNullOrEmpty(client_id))
-                {
-                    //var aud = OAuthManager.FindAudience(client_id);
-                    //var auth = OAuthManager.AddAuthorization(aud, loginResult.Client, redirect_uri, state);
-                    //string code = auth.AuthorizationCode;
-                    string code = "";
-
-                    //OAuth redirect url
-                    redirectUrl = redirect_uri;
-                    var separator = redirectUrl.Contains("?") ? "&" : "?";
-                    redirectUrl += separator + "code=" + code;
-                    redirectUrl += "&state=" + state;
-                }
-                else
-                {
-                    redirectUrl = model.GetRedirectUrl();
-                }
-
+                AddCookies(result.Cookies);
+                string redirectUrl = model.GetRedirectUrl();
                 return Redirect(redirectUrl);
             }
             else
             {
                 Prepare(model);
-                ViewBag.ErrorMessage = GetErrorMessage(loginResult.Reason);
-                return View("Index", model);
+                ViewBag.ErrorMessage = result.Reason;
+                return View(model);
             }
         }
 
         [Route("signout")]
         public ActionResult SignOut(HomeModel model)
         {
-            model.LogOut();
+            LogOut();
             return Redirect(model.GetRedirectUrl());
         }
 
@@ -113,11 +68,12 @@ namespace Authentication.Controllers
             Prepare(model);
 
             string url;
+
             if (model.RedirectSsl(out url))
                 return Redirect(url);
             else
             {
-                model.LogOut();
+                LogOut();
                 return View("Index", model);
             }
         }
@@ -217,18 +173,30 @@ namespace Authentication.Controllers
             return new HtmlString(builder.ToString());
         }
 
-        public IHtmlString GetErrorMessage(string err)
+        private void LogOut()
         {
-            TagBuilder builder = new TagBuilder("div");
+            DeleteCookie(HomeModel.CreateJwtAuthenticationCookie(string.Empty));
+            FormsAuthentication.SignOut();
+        }
 
-            builder.AddCssClass("error-message");
-            builder.AddCssClass("alert");
-            builder.AddCssClass("alert-danger");
-            builder.Attributes.Add("role", "alert");
+        private void DeleteCookie(HttpCookie cookie)
+        {
+            if (cookie != null)
+            {
+                cookie.Expires = DateTime.Now.AddDays(-1);
+                Response.Cookies.Add(cookie);
+            }
+        }
 
-            builder.SetInnerText(err);
-
-            return new HtmlString(builder.ToString());
+        private void AddCookies(IEnumerable<HttpCookie> cookies)
+        {
+            if (cookies != null)
+            {
+                foreach(var cookie in cookies)
+                {
+                    Response.Cookies.Add(cookie);
+                }
+            }
         }
     }
 

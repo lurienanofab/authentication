@@ -1,9 +1,12 @@
 ﻿using LNF.Cache;
+using LNF.Data;
 using LNF.Models.Data;
+using LNF.Repository;
 using LNF.Scheduler;
 using OnlineServices.Api;
 using OnlineServices.Api.Authorization.Credentials;
 using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Threading.Tasks;
 using System.Web;
@@ -13,15 +16,25 @@ namespace Authentication.Models
 {
     public class HomeModel
     {
-        private const string JWT_COOKIE_NAME = "lnf_token";
-        private const string JWT_COOKIE_DOMAIN = ".umich.edu";
+        public const string JWT_COOKIE_NAME = "lnf_token";
+        public const string JWT_COOKIE_DOMAIN = ".umich.edu";
 
         public string UserName { get; set; }
         public string Password { get; set; }
         public string ReturnUrl { get; set; }
         public string ReturnServer { get; set; }
 
-        private HttpCookie CreateJwtCookie(string token)
+        public static HttpCookie CreateFormsAuthenticationCookie(string username, string[] roles)
+        {
+            HttpCookie authCookie = FormsAuthentication.GetAuthCookie(username, true);
+            FormsAuthenticationTicket formInfoTicket = FormsAuthentication.Decrypt(authCookie.Value);
+            FormsAuthenticationTicket ticket = new FormsAuthenticationTicket(formInfoTicket.Version, formInfoTicket.Name, formInfoTicket.IssueDate, formInfoTicket.Expiration, formInfoTicket.IsPersistent, string.Join("|", roles), formInfoTicket.CookiePath);
+            authCookie.Value = FormsAuthentication.Encrypt(ticket);
+            authCookie.Expires = formInfoTicket.Expiration;
+            return authCookie;
+        }
+
+        public static HttpCookie CreateJwtAuthenticationCookie(string token)
         {
             var result = new HttpCookie(JWT_COOKIE_NAME, token);
             result.Domain = JWT_COOKIE_DOMAIN;
@@ -30,27 +43,39 @@ namespace Authentication.Models
             return result;
         }
 
-        public void LogOut()
+        public LogInResult LogIn()
         {
-            DeleteCookie(CreateJwtCookie(string.Empty));
-            FormsAuthentication.SignOut();
-        }
+            LogInResult result;
 
-        private void DeleteCookie(HttpCookie cookie)
-        {
-            if (cookie != null)
+            try
             {
-                cookie.Expires = DateTime.Now.AddDays(-1);
-                HttpContext.Current.Response.Cookies.Add(cookie);
+                var client = ClientUtility.Login(UserName, Password).Model<ClientModel>();
+
+                if (client.ClientActive)
+                {
+                    var formsCookie = CreateFormsAuthenticationCookie(client.UserName, client.Roles());
+                    result = LogInResult.Successful(client, formsCookie);
+                }
+                else
+                {
+                    result = LogInResult.Failure("Client is inactive.", client);
+                }
             }
+            catch (Exception ex)
+            {
+                result = LogInResult.Failure(ex.Message, null);
+            }
+
+            return result;
         }
 
-        public async Task<LogInResult> LogIn()
-        {
-            var result = new LogInResult();
 
+        public async Task<LogInResult> ApiLogIn()
+        {
             using (var ac = new AuthorizationClient())
             {
+                LogInResult result;
+
                 try
                 {
                     var auth = await ac.Authorize(new PasswordCredentials(UserName, Password));
@@ -59,46 +84,23 @@ namespace Authentication.Models
 
                     if (client == null)
                     {
-                        result.Reason = "Invalid username or password";
-                        result.Success = false;
-                        result.Client = null;
+                        result = LogInResult.Failure("Invalid username or password.", null);
                     }
                     else
                     {
-                        if (client.ClientActive)
-                        {
-                            //first create a FormsAuthentication cookie
-                            HttpCookie authCookie = FormsAuthentication.GetAuthCookie(client.UserName, true);
-                            FormsAuthenticationTicket formInfoTicket = FormsAuthentication.Decrypt(authCookie.Value);
-                            FormsAuthenticationTicket ticket = new FormsAuthenticationTicket(formInfoTicket.Version, formInfoTicket.Name, formInfoTicket.IssueDate, formInfoTicket.Expiration, formInfoTicket.IsPersistent, string.Join("|", client.Roles()), formInfoTicket.CookiePath);
-                            authCookie.Value = FormsAuthentication.Encrypt(ticket);
-                            authCookie.Expires = formInfoTicket.Expiration;
+                        // first create a FormsAuthentication cookie
+                        var formsCookie = CreateFormsAuthenticationCookie(client.UserName, client.Roles());
 
-                            HttpContext.Current.Response.Cookies.Add(authCookie);
+                        // next create a JWT cookie
+                        var jwtCookie = CreateJwtAuthenticationCookie(auth.AccessToken);
 
-                            //now create a JWT cookie for the api
-                            HttpCookie jwtCookie = CreateJwtCookie(auth.AccessToken);
-                            jwtCookie.Expires = DateTime.Now.AddSeconds(auth.ExpiresIn);
-
-                            HttpContext.Current.Response.Cookies.Add(jwtCookie);
-
-                            result.Reason = string.Empty;
-                            result.Success = true;
-                            result.Client = client;
-                        }
-                        else
-                        {
-                            result.Reason = "Client is inactive";
-                            result.Success = false;
-                            result.Client = client;
-                        }
+                        result = LogInResult.Successful(client, formsCookie, jwtCookie);
                     }
                 }
                 catch (Exception ex)
                 {
-                    string msg = ex.Message;
-                    result.Success = false;
-                    result.Reason = "Invalid username or password";
+                    string msg = ex.Message; // should we do something with this?
+                    result = LogInResult.Failure("Invalid username or password.", null);
                 }
 
                 return result;
@@ -197,10 +199,29 @@ namespace Authentication.Models
         }
     }
 
-    public class LogInResult
+    public struct LogInResult
     {
-        public bool Success { get; set; }
-        public string Reason { get; set; }
-        public ClientModel Client { get; set; }
+        private LogInResult(bool success, string reason, ClientModel client, params HttpCookie[] cookies)
+        {
+            Success = success;
+            Reason = reason;
+            Client = client;
+            Cookies = cookies;
+        }
+
+        public static LogInResult Successful(ClientModel client, params HttpCookie[] cookies)
+        {
+            return new LogInResult(true, string.Empty, client, cookies);
+        }
+
+        public static LogInResult Failure(string reason, ClientModel client)
+        {
+            return new LogInResult(false, reason, client, null);
+        }
+
+        public bool Success { get; }
+        public string Reason { get; }
+        public ClientModel Client { get; }
+        public IEnumerable<HttpCookie> Cookies { get; }
     }
 }
