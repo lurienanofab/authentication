@@ -112,7 +112,7 @@ namespace Authentication.Controllers
             //1) No cookieValue is passed and GET requests are allowed. This is for client-side checking from the browser (i.e. javascript)
             //2) A value is passed for cookieValue and only POST requests are allowed. This is for server-side checking from .NET, PHP, etc. (note: the server side application must be able to see the auth cookie to get it's value - in other words on the same domain)
 
-            ClientModel c = null;
+            ClientItem c = null;
 
             if (string.IsNullOrEmpty(cookieValue))
             {

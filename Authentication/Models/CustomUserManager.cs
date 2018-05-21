@@ -1,5 +1,4 @@
-﻿using LNF;
-using LNF.Cache;
+﻿using LNF.Cache;
 using LNF.Data;
 using LNF.Models.Data;
 using LNF.Repository;
@@ -29,7 +28,7 @@ namespace Authentication.Models
                     DA.Current.Insert(c);
                 }
 
-                c.Update(user.Client);
+                DA.Use<IClientManager>().Update(c, user.Client);
 
                 result = new IdentityResult();
             }
@@ -43,7 +42,7 @@ namespace Authentication.Models
         {
             get
             {
-                var query = DA.Current.Query<Client>().Model<ClientModel>();
+                var query = DA.Current.Query<ClientInfo>().Model<ClientItem>();
                 var result = query.Select(x => new IdentityUser(x)).AsQueryable();
                 return result;
             }
@@ -69,9 +68,9 @@ namespace Authentication.Models
         {
             IdentityUser result = null;
 
-            ClientModel client = CacheManager.Current.GetClient(userName);
+            var client = CacheManager.Current.GetClient(userName);
 
-            if (ClientUtility.CheckPassword(client.ClientID, password))
+            if (DA.Use<IClientManager>().CheckPassword(client.ClientID, password))
                 result = new IdentityUser(client);
 
             // result is null if password check failed...

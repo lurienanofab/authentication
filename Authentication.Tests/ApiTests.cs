@@ -14,7 +14,7 @@ namespace Authentication.Tests
         {
             using (var authClient = new AuthorizationClient())
             {
-                var result = authClient.Authorize(new PasswordCredentials("jgett", Providers.DataAccess.UniversalPassword)).Result;
+                var result = authClient.Authorize(new PasswordCredentials("jgett", ServiceProvider.Current.DataAccess.UniversalPassword)).Result;
                 Console.WriteLine(result.AccessToken);
                 Assert.IsFalse(string.IsNullOrEmpty(result.AccessToken));
             }

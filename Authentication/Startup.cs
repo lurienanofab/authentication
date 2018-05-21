@@ -1,4 +1,5 @@
 ﻿using LNF;
+using LNF.Impl.DependencyInjection.Web;
 using Microsoft.AspNet.Identity;
 using Microsoft.Owin;
 using Microsoft.Owin.Security.Cookies;
@@ -20,7 +21,9 @@ namespace Authentication
             //allows self signed cert with https
             ServicePointManager.ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true;
 
-            app.CreatePerOwinContext(Providers.DataAccess.StartUnitOfWork);
+            ServiceProvider.Current = IOC.Resolver.GetInstance<ServiceProvider>();
+
+            app.CreatePerOwinContext(ServiceProvider.Current.DataAccess.StartUnitOfWork);
 
             AreaRegistration.RegisterAllAreas();
             RouteConfig.RegisterRoutes(RouteTable.Routes);

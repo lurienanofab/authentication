@@ -5,9 +5,9 @@ namespace Authentication.Models
 {
     public class IdentityUser : IUser<int>
     {
-        public ClientModel Client { get; private set; }
+        public ClientItem Client { get; private set; }
 
-        public IdentityUser(ClientModel client)
+        public IdentityUser(ClientItem client)
         {
             Client = client;
         }

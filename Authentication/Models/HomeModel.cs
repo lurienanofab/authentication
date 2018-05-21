@@ -24,6 +24,8 @@ namespace Authentication.Models
         public string ReturnUrl { get; set; }
         public string ReturnServer { get; set; }
 
+        public IClientManager ClientManager => DA.Use<IClientManager>();
+
         public static HttpCookie CreateFormsAuthenticationCookie(string username, string[] roles)
         {
             HttpCookie authCookie = FormsAuthentication.GetAuthCookie(username, true);
@@ -36,10 +38,13 @@ namespace Authentication.Models
 
         public static HttpCookie CreateJwtAuthenticationCookie(string token)
         {
-            var result = new HttpCookie(JWT_COOKIE_NAME, token);
-            result.Domain = JWT_COOKIE_DOMAIN;
-            result.Path = "/";
-            result.HttpOnly = false;
+            var result = new HttpCookie(JWT_COOKIE_NAME, token)
+            {
+                Domain = JWT_COOKIE_DOMAIN,
+                Path = "/",
+                HttpOnly = false
+            };
+
             return result;
         }
 
@@ -49,7 +54,7 @@ namespace Authentication.Models
 
             try
             {
-                var client = ClientUtility.Login(UserName, Password).Model<ClientModel>();
+                var client = ClientManager.Login(UserName, Password);
 
                 if (client.ClientActive)
                 {
@@ -201,7 +206,7 @@ namespace Authentication.Models
 
     public struct LogInResult
     {
-        private LogInResult(bool success, string reason, ClientModel client, params HttpCookie[] cookies)
+        private LogInResult(bool success, string reason, ClientItem client, params HttpCookie[] cookies)
         {
             Success = success;
             Reason = reason;
@@ -209,19 +214,19 @@ namespace Authentication.Models
             Cookies = cookies;
         }
 
-        public static LogInResult Successful(ClientModel client, params HttpCookie[] cookies)
+        public static LogInResult Successful(ClientItem client, params HttpCookie[] cookies)
         {
             return new LogInResult(true, string.Empty, client, cookies);
         }
 
-        public static LogInResult Failure(string reason, ClientModel client)
+        public static LogInResult Failure(string reason, ClientItem client)
         {
             return new LogInResult(false, reason, client, null);
         }
 
         public bool Success { get; }
         public string Reason { get; }
-        public ClientModel Client { get; }
+        public ClientItem Client { get; }
         public IEnumerable<HttpCookie> Cookies { get; }
     }
 }

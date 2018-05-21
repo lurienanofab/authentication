@@ -52,7 +52,7 @@
             </div>
         }
 
-        @if (!Providers.IsProduction())
+        @if (!ServiceProvider.Current.IsProduction())
         {
             <div class="alert alert-danger" role="alert">
                 <strong style="font-size: larger;">THIS IS THE DEVELOPMENT SITE!</strong><br /><br />
