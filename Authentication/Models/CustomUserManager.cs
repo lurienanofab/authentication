@@ -1,5 +1,5 @@
-﻿using LNF.Cache;
-using LNF.Data;
+﻿using LNF;
+using LNF.Cache;
 using LNF.Models.Data;
 using LNF.Repository;
 using LNF.Repository.Data;
@@ -20,16 +20,7 @@ namespace Authentication.Models
 
             if (user.Client != null)
             {
-                var c = DA.Current.Single<Client>(user.Client.ClientID);
-
-                if (c == null)
-                {
-                    c = new Client();
-                    DA.Current.Insert(c);
-                }
-
-                DA.Use<IClientManager>().Update(c, user.Client);
-
+                ServiceProvider.Current.Data.ClientManager.Update(user.Client);
                 result = new IdentityResult();
             }
             else
@@ -42,7 +33,7 @@ namespace Authentication.Models
         {
             get
             {
-                var query = DA.Current.Query<ClientInfo>().Model<ClientItem>();
+                var query = DA.Current.Query<ClientInfo>().CreateModels<IClient>();
                 var result = query.Select(x => new IdentityUser(x)).AsQueryable();
                 return result;
             }
@@ -70,7 +61,7 @@ namespace Authentication.Models
 
             var client = CacheManager.Current.GetClient(userName);
 
-            if (DA.Use<IClientManager>().CheckPassword(client.ClientID, password))
+            if (ServiceProvider.Current.Data.ClientManager.CheckPassword(client.ClientID, password))
                 result = new IdentityUser(client);
 
             // result is null if password check failed...

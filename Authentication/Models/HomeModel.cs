@@ -1,14 +1,12 @@
-﻿using LNF.Cache;
-using LNF.Data;
+﻿using LNF;
+using LNF.Cache;
 using LNF.Models.Data;
-using LNF.Repository;
 using LNF.Scheduler;
-using OnlineServices.Api;
+using OnlineServices.Api.Authorization;
 using OnlineServices.Api.Authorization.Credentials;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
-using System.Threading.Tasks;
 using System.Web;
 using System.Web.Security;
 
@@ -16,37 +14,12 @@ namespace Authentication.Models
 {
     public class HomeModel
     {
-        public const string JWT_COOKIE_NAME = "lnf_token";
-        public const string JWT_COOKIE_DOMAIN = ".umich.edu";
-
         public string UserName { get; set; }
         public string Password { get; set; }
         public string ReturnUrl { get; set; }
         public string ReturnServer { get; set; }
 
-        public IClientManager ClientManager => DA.Use<IClientManager>();
-
-        public static HttpCookie CreateFormsAuthenticationCookie(string username, string[] roles)
-        {
-            HttpCookie authCookie = FormsAuthentication.GetAuthCookie(username, true);
-            FormsAuthenticationTicket formInfoTicket = FormsAuthentication.Decrypt(authCookie.Value);
-            FormsAuthenticationTicket ticket = new FormsAuthenticationTicket(formInfoTicket.Version, formInfoTicket.Name, formInfoTicket.IssueDate, formInfoTicket.Expiration, formInfoTicket.IsPersistent, string.Join("|", roles), formInfoTicket.CookiePath);
-            authCookie.Value = FormsAuthentication.Encrypt(ticket);
-            authCookie.Expires = formInfoTicket.Expiration;
-            return authCookie;
-        }
-
-        public static HttpCookie CreateJwtAuthenticationCookie(string token)
-        {
-            var result = new HttpCookie(JWT_COOKIE_NAME, token)
-            {
-                Domain = JWT_COOKIE_DOMAIN,
-                Path = "/",
-                HttpOnly = false
-            };
-
-            return result;
-        }
+        public IClientManager ClientManager => ServiceProvider.Current.Data.ClientManager;
 
         public LogInResult LogIn()
         {
@@ -57,14 +30,9 @@ namespace Authentication.Models
                 var client = ClientManager.Login(UserName, Password);
 
                 if (client.ClientActive)
-                {
-                    var formsCookie = CreateFormsAuthenticationCookie(client.UserName, client.Roles());
-                    result = LogInResult.Successful(client, formsCookie);
-                }
+                    result = LogInResult.Successful(client);
                 else
-                {
                     result = LogInResult.Failure("Client is inactive.", client);
-                }
             }
             catch (Exception ex)
             {
@@ -75,41 +43,40 @@ namespace Authentication.Models
         }
 
 
-        public async Task<LogInResult> ApiLogIn()
+        public LogInResult ApiLogIn()
         {
-            using (var ac = new AuthorizationClient())
+            var ac = new AuthorizationClient();
+
+            LogInResult result;
+
+            try
             {
-                LogInResult result;
+                var auth = ac.Authorize(new PasswordCredentials(UserName, Password));
 
-                try
+                var client = CacheManager.Current.GetClient(UserName);
+
+                if (client == null)
                 {
-                    var auth = await ac.Authorize(new PasswordCredentials(UserName, Password));
-
-                    var client = CacheManager.Current.GetClient(UserName);
-
-                    if (client == null)
-                    {
-                        result = LogInResult.Failure("Invalid username or password.", null);
-                    }
-                    else
-                    {
-                        // first create a FormsAuthentication cookie
-                        var formsCookie = CreateFormsAuthenticationCookie(client.UserName, client.Roles());
-
-                        // next create a JWT cookie
-                        var jwtCookie = CreateJwtAuthenticationCookie(auth.AccessToken);
-
-                        result = LogInResult.Successful(client, formsCookie, jwtCookie);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    string msg = ex.Message; // should we do something with this?
                     result = LogInResult.Failure("Invalid username or password.", null);
                 }
+                else
+                {
+                    // first create a FormsAuthentication cookie
+                    //var formsCookie = CreateFormsAuthenticationCookie(client.UserName, client.Roles());
 
-                return result;
+                    // next create a JWT cookie
+                    //var jwtCookie = CreateJwtAuthenticationCookie(auth.AccessToken);
+
+                    result = LogInResult.Successful(client);
+                }
             }
+            catch (Exception ex)
+            {
+                string msg = ex.Message; // should we do something with this?
+                result = LogInResult.Failure("Invalid username or password.", null);
+            }
+
+            return result;
         }
 
         public bool RedirectSsl(out string redirectUrl)
@@ -132,34 +99,45 @@ namespace Authentication.Models
                 return requireSsl.OnNonKiosk;
         }
 
-        public string GetRedirectUrl()
+        /// <summary>
+        /// Gets the redirect url based on the current ReturnServer and ReturnUrl properties. A full url (i.e https://host/path) is always returned. The scheme (http or http) is determined by the current request.
+        /// </summary>
+        public string GetRedirectUrl(HttpRequestBase request)
         {
             string result = string.Empty;
-            GetReturnServer(ref result);
+            GetReturnServer(request, ref result);
             GetReturnUrl(ref result);
             return result;
         }
 
-        private void GetReturnServer(ref string url)
+        private void GetReturnServer(HttpRequestBase request, ref string url)
         {
+            string host;
+
             if (string.IsNullOrEmpty(ReturnServer))
             {
-                url = ConfigurationManager.AppSettings["DefaultReturnServer"];
-                url = url.Replace("{self}", HttpContext.Current.Request.Url.Host);
+                host = GetDefaultReturnServer();
+                host = host.Replace("{self}", request.Url.Host);
             }
             else
-                url = ReturnServer;
+                host = ReturnServer;
 
-            if (!string.IsNullOrEmpty(url))
+            UriBuilder builder = new UriBuilder(host);
+
+            if (request.IsSecureConnection)
             {
-                if (!url.StartsWith("http://"))
-                    url = "http://" + url;
-
-                if (!url.EndsWith("/"))
-                    url = url + "/";
+                builder.Scheme = Uri.UriSchemeHttps;
+                builder.Port = 443;
+            }
+            else
+            {
+                builder.Scheme = Uri.UriSchemeHttp;
+                builder.Port = 80;
             }
 
-            //at this point url will either be an empty string or something like http://<ReturnServer>/ (with a trailing slash)
+            url = builder.Uri.ToString();
+
+            //at this point url be something like http(s)://<ReturnServer>/ (with a trailing slash)
         }
 
         private void GetReturnUrl(ref string url)
@@ -169,29 +147,27 @@ namespace Authentication.Models
             if (string.IsNullOrEmpty(path))
                 path = ConfigurationManager.AppSettings["DefaultReturnUrl"];
 
-            if (string.IsNullOrEmpty(url))
-            {
-                //no server specified
-                if (!path.StartsWith("/"))
-                    url = "/" + path;
-                else
-                    url = path;
-            }
-            else
-            {
-                //server is specified so it will have a trailing slash
-                if (path.StartsWith("/"))
-                    path = path.TrimStart('/');
+            // url will always have a trailing slash so remove it from path
+            path = path.TrimStart('/');
 
-                url += path;
-            }
+            var builder = new UriBuilder(url + path);
+
+            url = builder.Uri.ToString();
 
             //at this point we should either have a url like http://<ReturnServer>/<ReturnUrl> or /<ReturnUrl>
         }
 
+        private string GetDefaultReturnServer()
+        {
+            var result = ConfigurationManager.AppSettings["DefaultReturnServer"];
+            if (string.IsNullOrEmpty(result))
+                result = "{self}";
+            return result;
+        }
+
         public bool IsKiosk()
         {
-            bool result = KioskUtility.IsKiosk() || HttpContext.Current.Request.IsLocal;
+            bool result = KioskUtility.IsKiosk(HttpContext.Current.Request.UserHostAddress) || HttpContext.Current.Request.IsLocal;
             return result;
         }
 
@@ -206,27 +182,25 @@ namespace Authentication.Models
 
     public struct LogInResult
     {
-        private LogInResult(bool success, string reason, ClientItem client, params HttpCookie[] cookies)
+        private LogInResult(bool success, string reason, IClient client)
         {
             Success = success;
             Reason = reason;
             Client = client;
-            Cookies = cookies;
         }
 
-        public static LogInResult Successful(ClientItem client, params HttpCookie[] cookies)
+        public static LogInResult Successful(IClient client)
         {
-            return new LogInResult(true, string.Empty, client, cookies);
+            return new LogInResult(true, string.Empty, client);
         }
 
-        public static LogInResult Failure(string reason, ClientItem client)
+        public static LogInResult Failure(string reason, IClient client)
         {
-            return new LogInResult(false, reason, client, null);
+            return new LogInResult(false, reason, client);
         }
 
         public bool Success { get; }
         public string Reason { get; }
-        public ClientItem Client { get; }
-        public IEnumerable<HttpCookie> Cookies { get; }
+        public IClient Client { get; }
     }
 }

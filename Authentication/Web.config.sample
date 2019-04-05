@@ -25,15 +25,15 @@
   </connectionStrings>
 
   <appSettings>
-    <add key="SecretKey" value="xxxxx" />
+    <add key="SecretKey" value="xxxxx"/>
     <add key="RequireSSL.OnNonKiosk" value="false"/>
     <add key="RequireSSL.OnKiosk" value="false"/>
     <add key="DefaultReturnServer" value="{self}"/>
     <add key="DefaultReturnUrl" value="xxxxx"/>
-    <add key="as:Issuer" value="xxxxx"/>
-    <add key="as:AudienceId" value="xxxxx"/>
-    <add key="as:AudienceSecret" value="xxxxx"/>
-    <add key="ApiHost" value="xxxxx"/>
+    <add key="StaticHost" value="xxxxx"/>
+    <add key="ApiBaseUrl" value="xxxxx"/>
+    <add key="BasicAuthUsername" value="xxxxx"/>
+    <add key="BasicAuthPassword" value="xxxxx"/>
     <add key="MongoConnectionString" value="xxxxx"/>
     <add key="webpages:Version" value="3.0.0.0"/>
     <add key="webpages:Enabled" value="false"/>
@@ -58,6 +58,10 @@
   </system.web>
 
   <system.webServer>
+    <modules>
+      <add name="LnfServiceModule" type="LNF.Impl.ServiceModule, LNF.Impl" preCondition="managedHandler"/>
+    </modules>
+
     <handlers>
       <remove name="ExtensionlessUrlHandler-Integrated-4.0"/>
       <remove name="OPTIONSVerbHandler"/>

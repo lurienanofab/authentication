@@ -1,15 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Authentication.Models;
+using LNF.Scheduler;
+using Microsoft.AspNet.Identity;
+using Microsoft.Owin.Security;
+using System;
 using System.Linq;
-using System.Web;
-using System.Web.Mvc;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using Microsoft.AspNet.Identity;
-using Microsoft.AspNet.Identity.Owin;
-using Microsoft.Owin.Security;
-using LNF.Repository;
-using Authentication.Models;
+using System.Web;
+using System.Web.Mvc;
 
 namespace Authentication.Controllers
 {
@@ -30,8 +28,11 @@ namespace Authentication.Controllers
         [Route("v2")]
         public ActionResult Index(LoginModel model)
         {
-            Request.GetOwinContext().Authentication.SignOut(DefaultAuthenticationTypes.ApplicationCookie);
-            //Response.Cookies.Add(new HttpCookie("sselAuth.Cookie", null) { Path = "/", Domain = ".umich.edu", Expires = DateTime.Now.AddDays(-1) });
+            HttpContext.GetOwinContext().Authentication.SignOut(DefaultAuthenticationTypes.ApplicationCookie);
+            HttpContext.Response.Cookies.Add(new HttpCookie("sselAuth.Cookie", null) { Path = "/", Domain = ".umich.edu", Expires = DateTime.Now.AddDays(-1) });
+
+            ViewBag.KioskMessage = GetKioskMessage();
+
             return View(model);
         }
 
@@ -97,6 +98,25 @@ namespace Authentication.Controllers
             builder.SetInnerText(err);
 
             return new HtmlString(builder.ToString());
+        }
+
+        public string GetKioskMessage()
+        {
+            var result = string.Empty;
+
+            if (IsKiosk())
+            {
+                var splitter = Request.UserHostAddress.Split('.');
+                result = string.Format("Kiosk #{0}", splitter.LastOrDefault() ?? Request.UserHostAddress);
+            }
+
+            return result;
+        }
+
+        public bool IsKiosk()
+        {
+            bool result = KioskUtility.IsKiosk(Request.UserHostAddress) || Request.IsLocal;
+            return result;
         }
     }
 }
