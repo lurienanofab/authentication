@@ -22,7 +22,7 @@ namespace Authentication
         {
             //userService = new UserService();
             clientAppService = new ClientAppService();
-            clientManager = ServiceProvider.Current.Data.ClientManager;
+            clientManager = ServiceProvider.Current.Data.Client;
         }
 
         public override Task ValidateClientRedirectUri(OAuthValidateClientRedirectUriContext context)

@@ -1,14 +1,12 @@
 ﻿using LNF;
 using LNF.Cache;
+using LNF.Models.Authorization.Credentials;
 using LNF.Models.Data;
 using LNF.Scheduler;
 using OnlineServices.Api.Authorization;
-using OnlineServices.Api.Authorization.Credentials;
 using System;
-using System.Collections.Generic;
 using System.Configuration;
 using System.Web;
-using System.Web.Security;
 
 namespace Authentication.Models
 {
@@ -18,8 +16,9 @@ namespace Authentication.Models
         public string Password { get; set; }
         public string ReturnUrl { get; set; }
         public string ReturnServer { get; set; }
+        public string CurrentIP { get; set; }
 
-        public IClientManager ClientManager => ServiceProvider.Current.Data.ClientManager;
+        public IClientManager ClientManager => ServiceProvider.Current.Data.Client;
 
         public LogInResult LogIn()
         {
@@ -45,13 +44,13 @@ namespace Authentication.Models
 
         public LogInResult ApiLogIn()
         {
-            var ac = new AuthorizationClient();
+            var svc = new AuthorizationService();
 
             LogInResult result;
 
             try
             {
-                var auth = ac.Authorize(new PasswordCredentials(UserName, Password));
+                var auth = svc.Authorize(new PasswordCredentials(UserName, Password));
 
                 var client = CacheManager.Current.GetClient(UserName);
 
@@ -167,7 +166,7 @@ namespace Authentication.Models
 
         public bool IsKiosk()
         {
-            bool result = KioskUtility.IsKiosk(HttpContext.Current.Request.UserHostAddress) || HttpContext.Current.Request.IsLocal;
+            bool result = KioskUtility.IsKiosk(CurrentIP);
             return result;
         }
 

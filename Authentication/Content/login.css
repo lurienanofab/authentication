@@ -68,6 +68,8 @@ body {
     margin-bottom: 10px;
 }
 
+
+
 /* Small devices (landscape phones, 576px and up) */
 @media (min-width: 576px) {
 }
@@ -82,8 +84,18 @@ body {
         padding: 0;
     }
 
-    .login-container {
+    .no-flexbox .login-container,
+    .no-flexboxlegacy .login-container {
+        width: 1024px;
+        height: 768px;
+        margin: 0 auto;
+    }
+
+    .flexbox.flexboxlegacy .login-container {
         display: flex;
+    }
+
+    .login-container {
         align-items: center;
         justify-content: center;
         height: 100%;
@@ -95,10 +107,18 @@ body {
         margin-bottom: 0;
     }
 
+    .no-flexbox .login,
+    .no-flexboxlegacy .login {
+        margin-top: 60px;
+        padding-top: 140px;
+    }
+
     .login {
         min-width: 1024px;
         min-height: 768px;
-        background-image: url(images/lnf-login-screen2.jpg)
+        background-image: url(images/lnf-login-screen2.jpg);
+        background-repeat: no-repeat;
+        background-position-x: center;
     }
 
     .login-logo, .login-title {
@@ -108,6 +128,11 @@ body {
     .login-alerts {
         margin: 0 auto;
         width: 400px;
+    }
+
+    .no-flexbox .kiosk-message,
+    .no-flexboxlegacy .kiosk-message {
+        margin-top: 0;
     }
 
     .kiosk-message {

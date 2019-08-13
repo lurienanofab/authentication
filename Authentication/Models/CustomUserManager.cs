@@ -20,7 +20,7 @@ namespace Authentication.Models
 
             if (user.Client != null)
             {
-                ServiceProvider.Current.Data.ClientManager.Update(user.Client);
+                ServiceProvider.Current.Data.Client.Update(user.Client);
                 result = new IdentityResult();
             }
             else
@@ -61,7 +61,7 @@ namespace Authentication.Models
 
             var client = CacheManager.Current.GetClient(userName);
 
-            if (ServiceProvider.Current.Data.ClientManager.CheckPassword(client.ClientID, password))
+            if (ServiceProvider.Current.Data.Client.CheckPassword(client.ClientID, password))
                 result = new IdentityUser(client);
 
             // result is null if password check failed...

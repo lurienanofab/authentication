@@ -1,8 +1,10 @@
 ﻿using Authentication.Models;
+using LNF;
 using LNF.Cache;
 using LNF.Models.Data;
 using LNF.Repository;
 using LNF.Repository.Data;
+using LNF.Web;
 using Microsoft.AspNet.Identity;
 using Microsoft.Owin.Security;
 using Newtonsoft.Json;
@@ -27,7 +29,13 @@ namespace Authentication.Controllers
         [HttpGet, Route("")]
         public ActionResult Index(string returnServer = null, string returnUrl = null)
         {
-            var model = new HomeModel() { ReturnServer = returnServer, ReturnUrl = returnUrl };
+            var model = new HomeModel
+            {
+                ReturnServer = returnServer,
+                ReturnUrl = returnUrl,
+                CurrentIP = HttpContext.CurrentIP()
+            };
+
             return LogInView(model);
         }
 
@@ -36,11 +44,13 @@ namespace Authentication.Controllers
         {
             var loginResult = model.LogIn();
 
+            string errmsg = string.Empty;
+
             if (loginResult.Success)
             {
                 AddCookies(CreateFormsAuthenticationCookie(loginResult));
 
-                var isPersistent = true; //!string.IsNullOrEmpty(Request.Form.Get("isPersistent"));
+                var isPersistent = true;
 
                 var claims = new List<Claim> { new Claim(ClaimsIdentity.DefaultNameClaimType, model.UserName) };
                 claims.AddRange(loginResult.Client.Roles().Select(x => new Claim(ClaimsIdentity.DefaultRoleClaimType, x)));
@@ -54,10 +64,13 @@ namespace Authentication.Controllers
             }
             else
             {
-                ViewBag.ErrorMessage = loginResult.Reason;
+                errmsg = loginResult.Reason;
             }
 
             PrepareViewBag(model);
+
+            ViewBag.ErrorMessage = errmsg;
+
             return View(model);
         }
 
@@ -91,7 +104,9 @@ namespace Authentication.Controllers
                 return Redirect(url);
 
             LogOut();
+
             PrepareViewBag(model);
+
             return View("Index", model);
         }
 
@@ -242,7 +257,7 @@ namespace Authentication.Controllers
 
             TagBuilder builder = new TagBuilder("div");
 
-            builder.AddCssClass("kiosk-message");
+            builder.AddCssClass("kiosk-message-text");
 
             builder.SetInnerText(string.Format("Kiosk #{0}", splitter.Last() ?? Request.UserHostAddress));
 
@@ -284,7 +299,7 @@ namespace Authentication.Controllers
             if (loginResult.Success)
             {
                 string username = loginResult.Client.UserName;
-                string[] roles = loginResult.Client.Roles();
+                string[] roles = GetRoles(loginResult.Client);
                 HttpCookie authCookie = FormsAuthentication.GetAuthCookie(username, true);
                 FormsAuthenticationTicket formInfoTicket = FormsAuthentication.Decrypt(authCookie.Value);
                 FormsAuthenticationTicket ticket = new FormsAuthenticationTicket(formInfoTicket.Version, formInfoTicket.Name, formInfoTicket.IssueDate, formInfoTicket.Expiration, formInfoTicket.IsPersistent, string.Join("|", roles), formInfoTicket.CookiePath);
@@ -294,6 +309,12 @@ namespace Authentication.Controllers
             }
 
             return null;
+        }
+
+        private string[] GetRoles(IClient client)
+        {
+            var privs = ServiceProvider.Current.Data.Client.GetPrivs();
+            return privs.Where(x => (x.PrivFlag & client.Privs) > 0).Select(x => x.PrivType).ToArray();
         }
 
         private HttpCookie CreateJwtAuthenticationCookie(string token)

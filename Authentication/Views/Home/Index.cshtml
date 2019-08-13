@@ -10,6 +10,33 @@
 
 @section styles{
     <link rel="stylesheet" href="@Url.Content("~/Content/login.css")">
+
+    <style>
+        body {
+            overflow:hidden;
+        }
+
+        .debug {
+            width: 700px;
+            height: 304px;
+            border: 2px solid #808080;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            margin-left: -350px;
+            margin-top: -152px;
+            background-color: #f5f5f5;
+        }
+
+            .debug .messages {
+                white-space: pre;
+                overflow: auto;
+                height: 260px;
+                padding: 10px;
+                font-family: monospace;
+                margin-bottom: 5px;
+            }
+    </style>
 }
 
 <div class="login-container">
@@ -19,12 +46,17 @@
         <div class="kiosk-message">
             @ViewBag.KioskMessage
         </div>
+
         @using (Html.BeginForm("Index", "Home", FormMethod.Post, new { @class = "form-horizontal login-form" }))
         {
+            @Html.HiddenFor(x => x.ReturnServer)
+            @Html.HiddenFor(x => x.ReturnUrl)
+            @Html.HiddenFor(x => x.CurrentIP, new { @class = "ip-addr" });
+
             <div class="form-group">
                 <label class="control-label col-md-offset-3 col-md-2 login-text">Username</label>
                 <div class="col-md-3">
-                    @Html.TextBoxFor(x => x.UserName, new { @class = "form-control" })
+                    @Html.TextBoxFor(x => x.UserName, new { @class = "form-control", autocorrect = "off", autocapitalize = "none", spellcheck = "false" })
                 </div>
             </div>
             <div class="form-group">
@@ -60,9 +92,38 @@
     </div>
 </div>
 
+<div class="debug" style="display: none;">
+    <div class="messages"></div>
+    <button type="button" class="debug-close-button" style="margin-left: 5px;">Close</button>
+</div>
+
 @section scripts {
     <script>
         if (window.location != window.top.location)
             window.top.location = '/login';
+
+        if (Modernizr.flexbox)
+            $(".debug .messages").append("<div>flexbox</div>");
+        else
+            $(".debug .messages").append("<div>no-flexbox</div>");
+
+        if (Modernizr.flexboxlegacy)
+            $(".debug .messages").append("<div>flexboxlegacy</div>");
+        else
+            $(".debug .messages").append("<div>no-flexboxlegacy</div>");
+
+        $(".debug .messages").append($("<div/>").html(window.navigator.userAgent));
+
+        $(".debug .messages").append($("<div/>").html(window.location.href));
+        $(".debug .messages").append($("<div/>").html($(".ip-addr").val()));
+
+        $(window).on("keydown", function (e) {
+            if (e.shiftKey == true && e.keyCode == 38)
+                $(".debug").show();
+        });
+
+        $(".debug-close-button").on("click", function (e) {
+            $(".debug").hide();
+        });
     </script>
 }
