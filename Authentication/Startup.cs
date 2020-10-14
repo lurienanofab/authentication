@@ -1,9 +1,9 @@
-﻿using Microsoft.AspNet.Identity;
+﻿using LNF;
+using LNF.Web;
 using Microsoft.Owin;
-using Microsoft.Owin.Security.Cookies;
 using Owin;
-using System;
 using System.Net;
+using System.Reflection;
 using System.Web.Http;
 using System.Web.Mvc;
 using System.Web.Routing;
@@ -19,11 +19,16 @@ namespace Authentication
             //allows self signed cert with https
             ServicePointManager.ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true;
 
+            WebApp.Current.BootstrapMvc(new[] { Assembly.GetExecutingAssembly() });
+
             AreaRegistration.RegisterAllAreas();
             RouteConfig.RegisterRoutes(RouteTable.Routes);
             GlobalConfiguration.Configure(WebApiConfig.Register);
 
-            ConfigureAuth(app);
+            var provider = WebApp.Current.GetInstance<IProvider>();
+            ConfigureAuth(app, provider);
+
+            app.UseDataAccess();
         }
     }
 }

@@ -1,7 +1,6 @@
 ﻿using LNF;
-using LNF.Cache;
-using LNF.Models.Authorization.Credentials;
-using LNF.Models.Data;
+using LNF.Authorization.Credentials;
+using LNF.Data;
 using LNF.Scheduler;
 using OnlineServices.Api.Authorization;
 using System;
@@ -12,13 +11,12 @@ namespace Authentication.Models
 {
     public class HomeModel
     {
+        public IProvider Provider { get; set; }
         public string UserName { get; set; }
         public string Password { get; set; }
         public string ReturnUrl { get; set; }
         public string ReturnServer { get; set; }
         public string CurrentIP { get; set; }
-
-        public IClientManager ClientManager => ServiceProvider.Current.Data.Client;
 
         public LogInResult LogIn()
         {
@@ -26,7 +24,7 @@ namespace Authentication.Models
 
             try
             {
-                var client = ClientManager.Login(UserName, Password);
+                var client = Provider.Data.Client.Login(UserName, Password);
 
                 if (client.ClientActive)
                     result = LogInResult.Successful(client);
@@ -52,7 +50,7 @@ namespace Authentication.Models
             {
                 var auth = svc.Authorize(new PasswordCredentials(UserName, Password));
 
-                var client = CacheManager.Current.GetClient(UserName);
+                var client = Provider.Data.Client.GetClient(UserName);
 
                 if (client == null)
                 {
@@ -78,21 +76,30 @@ namespace Authentication.Models
             return result;
         }
 
-        public bool RedirectSsl(out string redirectUrl)
+        public bool RedirectSsl(HttpContextBase context, out string redirectUrl)
         {
-            if (HttpContext.Current.Request.IsSecureConnection)
+            if (context.Request.IsSecureConnection)
             {
-                redirectUrl = HttpContext.Current.Request.Url.ToString();
+                // Nothing needs to be done. The request is already so redirecting is not necessary.
+                redirectUrl = context.Request.Url.ToString();
                 return false;
             }
 
-            bool isKiosk = IsKiosk();
+            // At this point the request is http (not ssl).
+            // Now we check if a redirect to https is needed based on web.config.
 
-            var requireSsl = new { OnKiosk = RequireSSL("OnKiosk"), OnNonKiosk = RequireSSL("OnNonKiosk") };
+            // get the settings from web.config
+            var requireSsl = new
+            {
+                OnKiosk = RequireSSL("OnKiosk"),
+                OnNonKiosk = RequireSSL("OnNonKiosk")
+            };
 
-            redirectUrl = HttpContext.Current.Request.Url.ToString().Replace("http://", "https://");
+            // if a redirect is necessary it will be to https
+            redirectUrl = context.Request.Url.ToString().Replace("http://", "https://");
 
-            if (isKiosk)
+            // use the appropriate setting depending on if the request is coming from a kiosk or not.
+            if (IsKiosk())
                 return requireSsl.OnKiosk;
             else
                 return requireSsl.OnNonKiosk;
@@ -166,7 +173,7 @@ namespace Authentication.Models
 
         public bool IsKiosk()
         {
-            bool result = KioskUtility.IsKiosk(CurrentIP);
+            bool result = Kiosks.Create(Provider.Scheduler.Kiosk).IsKiosk(CurrentIP);
             return result;
         }
 

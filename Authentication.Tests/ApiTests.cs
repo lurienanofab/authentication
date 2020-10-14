@@ -1,5 +1,5 @@
 ﻿using LNF;
-using LNF.Models.Authorization.Credentials;
+using LNF.Authorization.Credentials;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OnlineServices.Api.Authorization;
 using System;

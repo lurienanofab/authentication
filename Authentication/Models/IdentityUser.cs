@@ -1,4 +1,4 @@
-﻿using LNF.Models.Data;
+﻿using LNF.Data;
 using Microsoft.AspNet.Identity;
 
 namespace Authentication.Models

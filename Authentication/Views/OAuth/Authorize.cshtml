@@ -10,10 +10,10 @@
 <div class="container">
     <h2>Authorize</h2>
     <hr />
-    @using (Html.BeginForm("", "", FormMethod.Post))
+    @using (Html.BeginForm("Authorize", "OAuth", FormMethod.Post))
     {
         <p>Hello @displayName,</p>
-        <p>A third party application (@Model.Name) wants to do the following on your behalf:</p>
+        <p>A third party application <strong>@Model.Name</strong> wants to do the following on your behalf:</p>
         <ul>
             @foreach (var scope in scopes)
             {
@@ -21,8 +21,8 @@
             }
         </ul>
         <p>
-            <input type="submit" name="grant" value="Grant" />
-            <input type="submit" name="login" value="Sign in as different user" />
+            <input type="submit" name="grant" value="Grant" class="btn btn-primary" />
+            <input type="submit" name="login" value="Sign in as different user" class="btn btn-default" />
         </p>
     }
 </div>

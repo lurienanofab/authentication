@@ -1,5 +1,4 @@
 ﻿@using Microsoft.Owin
-
 @{
     ViewBag.Title = "AuthorizeError";
     IOwinContext owinContext = Context.GetOwinContext();
@@ -11,6 +10,7 @@
 <div class="container">
     <h2>Authorize Error</h2>
     <hr />
-    <p>Error: @error</p>
+    <p>Error: [@Response.StatusCode] @error</p>
     <p>@errorDescription</p>
+    <p>@errorUri</p>
 </div>

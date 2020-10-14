@@ -1,8 +1,8 @@
 ﻿using LNF;
-using LNF.Cache;
-using LNF.Models.Data;
+using LNF.Data;
+using LNF.Impl;
+using LNF.Impl.Repository.Data;
 using LNF.Repository;
-using LNF.Repository.Data;
 using Microsoft.AspNet.Identity;
 using System.Linq;
 using System.Security.Claims;
@@ -12,7 +12,12 @@ namespace Authentication.Models
 {
     public class CustomUserManager : UserManager<IdentityUser, int>
     {
-        public CustomUserManager() : base(new CustomUserStore()) { }
+        protected IProvider Provider { get; }
+
+        public CustomUserManager(IProvider provider) : base(new CustomUserStore())
+        {
+            Provider = provider;
+        }
 
         public override Task<IdentityResult> CreateAsync(IdentityUser user)
         {
@@ -20,7 +25,7 @@ namespace Authentication.Models
 
             if (user.Client != null)
             {
-                ServiceProvider.Current.Data.Client.Update(user.Client);
+                Provider.Data.Client.Update(user.Client);
                 result = new IdentityResult();
             }
             else
@@ -33,7 +38,7 @@ namespace Authentication.Models
         {
             get
             {
-                var query = DA.Current.Query<ClientInfo>().CreateModels<IClient>();
+                var query = Provider.Data.Client.GetClients();
                 var result = query.Select(x => new IdentityUser(x)).AsQueryable();
                 return result;
             }
@@ -59,9 +64,9 @@ namespace Authentication.Models
         {
             IdentityUser result = null;
 
-            var client = CacheManager.Current.GetClient(userName);
+            var client = Provider.Data.Client.GetClient(userName);
 
-            if (ServiceProvider.Current.Data.Client.CheckPassword(client.ClientID, password))
+            if (Provider.Data.Client.CheckPassword(client.ClientID, password))
                 result = new IdentityUser(client);
 
             // result is null if password check failed...
@@ -73,14 +78,9 @@ namespace Authentication.Models
         {
             IdentityResult result = null;
 
-            Client client = DA.Current.Single<Client>(userId);
-
-            if (client == null)
-                result = new IdentityResult(string.Format("Cannot find record with ClientID = {0}", userId));
-
-            if (client.CheckPassword(currentPassword))
+            if (Provider.Data.Client.CheckPassword(userId, currentPassword))
             {
-                client.SetPassword(newPassword);
+                Provider.Data.Client.SetPassword(userId, newPassword);
                 result = new IdentityResult();
             }
             else

@@ -1,12 +1,13 @@
 ﻿using Authentication.Models;
 using LNF;
-using LNF.Models.Data;
+using LNF.Data;
 using Microsoft.Owin.Security;
 using Microsoft.Owin.Security.Infrastructure;
 using Microsoft.Owin.Security.OAuth;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -15,54 +16,60 @@ namespace Authentication
     public class OAuthProvider : OAuthAuthorizationServerProvider
     {
         //private readonly UserService userService;
-        private readonly ClientAppService clientAppService;
-        private readonly IClientManager clientManager;
+        protected IProvider Provider { get; }
+        protected IClientRepository ClientManager => Provider.Data.Client;
+        private readonly ClientAppRepository clientAppRepo;
 
-        public OAuthProvider()
+        public OAuthProvider(IProvider provider)
         {
             //userService = new UserService();
-            clientAppService = new ClientAppService();
-            clientManager = ServiceProvider.Current.Data.Client;
+            Provider = provider;
+            clientAppRepo = new ClientAppRepository();
         }
 
         public override Task ValidateClientRedirectUri(OAuthValidateClientRedirectUriContext context)
         {
-            return Task.Factory.StartNew(() =>
-            {
-                var client = clientAppService.GetClientAppBytId(context.ClientId);
+            bool validated = false;
 
-                if (client != null)
+            var client = clientAppRepo.GetClientAppBytId(context.ClientId);
+
+            if (client != null)
+            {
+                if (client.Redirects.Contains(context.RedirectUri))
                 {
-                    context.Validated(client.RedirectUrl);
+                    validated = context.Validated();
                 }
-            });
+            }
+
+            return Task.FromResult<object>(null);
         }
 
         public override Task ValidateClientAuthentication(OAuthValidateClientAuthenticationContext context)
         {
-            return Task.Factory.StartNew(() =>
+            // Called by the /token request, should return a token if the clientId and clientSecret are correct
+
+            if (!context.TryGetBasicCredentials(out string clientId, out string clientSecret))
+                context.TryGetFormCredentials(out clientId, out clientSecret);
+
+            var client = clientAppRepo.GetClientAppBytId(context.ClientId);
+
+            if (client != null && clientSecret == client.Secret)
             {
-                context.TryGetFormCredentials(out string clientId, out string clientSecret);
+                context.Validated(clientId);
+            }
 
-                var client = clientAppService.GetClientAppBytId(context.ClientId);
-
-                if (client != null && clientSecret == client.Secret)
-                {
-                    context.Validated(clientId);
-                }
-            });
+            return Task.FromResult<object>(null);
         }
 
         public override Task GrantClientCredentials(OAuthGrantClientCredentialsContext context)
         {
-            return Task.Factory.StartNew(() =>
-            {
-                var client = clientAppService.GetClientAppBytId(context.ClientId);
-                var oAuthIdentity = new ClaimsIdentity(context.Options.AuthenticationType);
-                oAuthIdentity.AddClaim(new Claim(ClaimTypes.Name, client.Name));
-                var ticket = new AuthenticationTicket(oAuthIdentity, new AuthenticationProperties());
-                context.Validated(ticket);
-            });
+            var client = clientAppRepo.GetClientAppBytId(context.ClientId);
+            var oAuthIdentity = new ClaimsIdentity(context.Options.AuthenticationType);
+            oAuthIdentity.AddClaim(new Claim(ClaimTypes.Name, client.Name));
+            var ticket = new AuthenticationTicket(oAuthIdentity, new AuthenticationProperties());
+            context.Validated(ticket);
+
+            return Task.FromResult<object>(null);
         }
 
         public override Task GrantAuthorizationCode(OAuthGrantAuthorizationCodeContext context)
@@ -77,27 +84,26 @@ namespace Authentication
 
         public override Task GrantResourceOwnerCredentials(OAuthGrantResourceOwnerCredentialsContext context)
         {
-            return Task.Factory.StartNew(() =>
+            var username = context.UserName;
+            var password = context.Password;
+            var user = ClientManager.Login(username, password);
+            if (user != null)
             {
-                var username = context.UserName;
-                var password = context.Password;
-                var user = clientManager.Login(username, password);
-                if (user != null)
+                var claims = new List<Claim>
                 {
-                    var claims = new List<Claim>()
-                    {
-                        new Claim(ClaimTypes.Name, $"{user.FName} {user.LName}"),
-                        new Claim("UserID", user.ClientID.ToString())
-                    };
+                    new Claim(ClaimTypes.Name, $"{user.FName} {user.LName}"),
+                    new Claim("UserID", user.ClientID.ToString())
+                };
 
-                    ClaimsIdentity oAutIdentity = new ClaimsIdentity(claims, Startup.OAuthOptions.AuthenticationType);
-                    context.Validated(new AuthenticationTicket(oAutIdentity, new AuthenticationProperties() { }));
-                }
-                else
-                {
-                    context.SetError("invalid_grant", "Error");
-                }
-            });
+                ClaimsIdentity oAutIdentity = new ClaimsIdentity(claims, Startup.GetServerOptions(Provider).AuthenticationType);
+                context.Validated(new AuthenticationTicket(oAutIdentity, new AuthenticationProperties() { }));
+            }
+            else
+            {
+                context.SetError("invalid_grant", "Error");
+            }
+
+            return Task.FromResult<object>(null);
         }
     }
 
@@ -107,22 +113,23 @@ namespace Authentication
 
         public override Task CreateAsync(AuthenticationTokenCreateContext context)
         {
-            return Task.Factory.StartNew(() =>
-            {
-                context.SetToken(Guid.NewGuid().ToString("n") + Guid.NewGuid().ToString("n"));
-                _authenticationCodes[context.Token] = context.SerializeTicket();
-            });
+            string token = Guid.NewGuid().ToString("n") + Guid.NewGuid().ToString("n");
+            context.SetToken(token);
+
+            string ticket = context.SerializeTicket();
+            _authenticationCodes[context.Token] = ticket;
+
+            return Task.FromResult<object>(null);
         }
 
         public override Task ReceiveAsync(AuthenticationTokenReceiveContext context)
         {
-            return Task.Factory.StartNew(() =>
+            if (_authenticationCodes.TryRemove(context.Token, out string value))
             {
-                if (_authenticationCodes.TryRemove(context.Token, out string value))
-                {
-                    context.DeserializeTicket(value);
-                }
-            });
+                context.DeserializeTicket(value);
+            }
+
+            return Task.FromResult<object>(null);
         }
     }
 

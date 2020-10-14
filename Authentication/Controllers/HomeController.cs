@@ -1,9 +1,6 @@
 ﻿using Authentication.Models;
 using LNF;
-using LNF.Cache;
-using LNF.Models.Data;
-using LNF.Repository;
-using LNF.Repository.Data;
+using LNF.Data;
 using LNF.Web;
 using Microsoft.AspNet.Identity;
 using Microsoft.Owin.Security;
@@ -12,7 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
-using System.Threading.Tasks;
+using System.Security.Principal;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.Security;
@@ -24,13 +21,25 @@ namespace Authentication.Controllers
         public const string JWT_COOKIE_NAME = "lnf_token";
         public const string JWT_COOKIE_DOMAIN = ".umich.edu";
 
+        public IProvider Provider { get; private set; }
+
+        public HomeController(IProvider provider)
+        {
+            Provider = provider;
+        }
+
         public IAuthenticationManager Authentication => HttpContext.GetOwinContext().Authentication;
 
         [HttpGet, Route("")]
         public ActionResult Index(string returnServer = null, string returnUrl = null)
         {
+            ViewBag.PasswordResetRequired = false;
+            ViewBag.RequestPasswordReset = false;
+            ViewBag.IsHttps = Request.IsSecureConnection;
+
             var model = new HomeModel
             {
+                Provider = Provider,
                 ReturnServer = returnServer,
                 ReturnUrl = returnUrl,
                 CurrentIP = HttpContext.CurrentIP()
@@ -42,29 +51,43 @@ namespace Authentication.Controllers
         [HttpPost, Route("")]
         public ActionResult Index(HomeModel model)
         {
-            var loginResult = model.LogIn();
+            model.Provider = Provider;
+
+            bool passwordResetRequired;
+            LogInResult loginResult = PasswordResetRequired(model, out passwordResetRequired);
+
+            ViewBag.PasswordResetRequired = passwordResetRequired;
+            ViewBag.RequestPasswordReset = false;
+            ViewBag.IsHttps = Request.IsSecureConnection;
 
             string errmsg = string.Empty;
 
-            if (loginResult.Success)
+            if (!passwordResetRequired)
             {
-                AddCookies(CreateFormsAuthenticationCookie(loginResult));
+                if (loginResult.Success)
+                {
+                    AddCookies(CreateFormsAuthenticationCookie(loginResult));
 
-                var isPersistent = true;
+                    var isPersistent = true;
 
-                var claims = new List<Claim> { new Claim(ClaimsIdentity.DefaultNameClaimType, model.UserName) };
-                claims.AddRange(loginResult.Client.Roles().Select(x => new Claim(ClaimsIdentity.DefaultRoleClaimType, x)));
+                    var claims = new List<Claim> { new Claim(ClaimsIdentity.DefaultNameClaimType, model.UserName) };
+                    claims.AddRange(loginResult.Client.Roles().Select(x => new Claim(ClaimsIdentity.DefaultRoleClaimType, x)));
 
-                Authentication.SignIn(
-                    new AuthenticationProperties { IsPersistent = isPersistent },
-                    new ClaimsIdentity(claims, DefaultAuthenticationTypes.ApplicationCookie));
+                    Authentication.SignIn(
+                        new AuthenticationProperties { IsPersistent = isPersistent },
+                        new ClaimsIdentity(claims, DefaultAuthenticationTypes.ApplicationCookie));
 
-                string redirectUrl = model.GetRedirectUrl(Request);
-                return Redirect(redirectUrl);
+                    string redirectUrl = model.GetRedirectUrl(Request);
+                    return Redirect(redirectUrl);
+                }
+                else
+                {
+                    errmsg = loginResult.Reason;
+                }
             }
             else
             {
-                errmsg = loginResult.Reason;
+                AddPasswordResetRequest(loginResult.Client);
             }
 
             PrepareViewBag(model);
@@ -74,15 +97,157 @@ namespace Authentication.Controllers
             return View(model);
         }
 
+        [HttpGet, Route("request-password-reset")]
+        public ActionResult RequestPasswordReset()
+        {
+            ViewBag.RequestPasswordReset = true;
+            ViewBag.PasswordResetRequired = false;
+            ViewBag.PasswordResetError = string.Empty;
+            var model = new HomeModel { Provider = Provider };
+            PrepareViewBag(model);
+            return View("Index", model);
+        }
+
+        [HttpPost, Route("request-password-reset")]
+        public ActionResult RequestPasswordReset(string username)
+        {
+            ViewBag.ErrorMessage = string.Empty;
+
+            if (string.IsNullOrEmpty(username))
+            {
+                ViewBag.RequestPasswordReset = true;
+                ViewBag.PasswordResetRequired = false;
+                ViewBag.PasswordResetError = "Username is required.";
+            }
+            else
+            {
+                var client = Provider.Data.Client.GetClient(username);
+                if (client != null)
+                {
+                    Provider.Data.Client.SetRequirePasswordReset(client.ClientID, true);
+                    ViewBag.RequestPasswordReset = false;
+                    ViewBag.PasswordResetRequired = true;
+                    ViewBag.PasswordResetError = string.Empty;
+                    AddPasswordResetRequest(client);
+                }
+                else
+                {
+                    ViewBag.RequestPasswordReset = true;
+                    ViewBag.PasswordResetRequired = false;
+                    ViewBag.PasswordResetError = "Invalid username.";
+                }
+            }
+
+            var model = new HomeModel { Provider = Provider, UserName = username };
+
+            PrepareViewBag(model);
+
+            return View("Index", model);
+        }
+
+        [HttpPost, Route("password-reset")]
+        public ActionResult ResetPassword(PasswordResetModel model)
+        {
+            HomeModel homeModel = new HomeModel { Provider = Provider };
+
+            PrepareViewBag(homeModel);
+
+            ViewBag.ErrorMessage = string.Empty;
+            ViewBag.PasswordResetError = string.Empty;
+            ViewBag.PasswordResetRequired = false;
+            ViewBag.RequestPasswordReset = false;
+
+            bool passwordResetRequired;
+            string passwordResetError;
+
+            if (string.IsNullOrEmpty(model.ResetCode))
+            {
+                passwordResetRequired = true;
+                passwordResetError = "Missing reset code.";
+            }
+            else if (string.IsNullOrEmpty(model.NewPassword))
+            {
+                passwordResetRequired = true;
+                passwordResetError = "Missing new password.";
+            }
+            else if (string.IsNullOrEmpty(model.NewPassword))
+            {
+                passwordResetRequired = true;
+                passwordResetError = "Missing confirm password.";
+            }
+            else if (model.NewPassword.Length < 6)
+            {
+                passwordResetRequired = true;
+                passwordResetError = "Password must be at least 6 characters.";
+            }
+            else if (model.NewPassword != model.ConfirmPassword)
+            {
+                passwordResetRequired = true;
+                passwordResetError = "Passwords do not match.";
+            }
+            else
+            {
+                var util = new PasswordResetUtility(Provider, model.ResetCode);
+
+                passwordResetRequired = true;
+                passwordResetError = "Invalid reset code. Did you type it correctly?";
+
+                if (util.Verify())
+                {
+                    if (util.IsCurrentPassword(model.NewPassword))
+                    {
+                        passwordResetRequired = true;
+                        passwordResetError = "You may not reuse your previous password.";
+                    }
+                    else if (util.IsPasswordUserName(model.NewPassword))
+                    {
+                        passwordResetRequired = true;
+                        passwordResetError = "Your password cannot be the same as your username.";
+                    }
+                    else if (util.ConfirmResetCode())
+                    {
+                        Provider.Data.Client.SetPassword(util.Client.ClientID, model.NewPassword);
+                        Provider.Data.Client.CompletePasswordReset(util.Client.ClientID, model.ResetCode);
+                        Provider.Mail.SendMessage(new LNF.Mail.SendMessageArgs
+                        {
+                            Caller = "Authentication.Controllers.HomeController.ResetPassword",
+                            ClientID = util.Client.ClientID,
+                            Attachments = null,
+                            Cc = null,
+                            From = "lnf-support@umich.edu",
+                            Bcc = LNF.CommonTools.SendEmail.DeveloperEmails,
+                            DisplayName = "LNF Online Services",
+                            To = new[] { util.Client.Email },
+                            IsHtml = true,
+                            Subject = "LNF password reset complete",
+                            Body = "Your LNF Online Services password has been changed successfully. If you did not request a password reset please contact lnf-support@umich.edu immediately."
+                        });
+
+                        return RedirectToAction("Index");
+                    }
+                }
+            }
+
+            ViewBag.PasswordResetRequired = passwordResetRequired;
+            ViewBag.PasswordResetError = passwordResetError;
+            return View("Index", homeModel);
+        }
+
         [Route("signout")]
         public ActionResult SignOut(HomeModel model)
         {
+            model.Provider = Provider;
+
             LogOut();
+
             return Redirect(model.GetRedirectUrl(Request));
         }
 
         private void PrepareViewBag(HomeModel model)
         {
+            if (string.IsNullOrEmpty(model.CurrentIP))
+                model.CurrentIP = HttpContext.CurrentIP();
+
             ViewBag.ErrorMessage = string.Empty;
             ViewBag.KioskMessage = string.Empty;
 
@@ -100,7 +265,7 @@ namespace Authentication.Controllers
             //Assume the user is not trying to log in at this point.
             //Either returns the Index view or redirects to https if ssl is required.
 
-            if (model.RedirectSsl(out string url))
+            if (model.RedirectSsl(HttpContext, out string url))
                 return Redirect(url);
 
             LogOut();
@@ -150,16 +315,16 @@ namespace Authentication.Controllers
             {
                 if (!string.IsNullOrEmpty(User.Identity.Name))
                 {
-                    c = CacheManager.Current.GetClient(User.Identity.Name);
+                    c = Provider.Data.Client.GetClient(User.Identity.Name);
 
                     if (c == null)
                         return Json(new { success = false, message = string.Format("no client found for '{0}'", User.Identity.Name) });
 
                     //success!
                     if (string.IsNullOrEmpty(callback))
-                        return Json(new { success = true, message = "", authenticated = User.Identity.IsAuthenticated, clientId = c.ClientID, username = User.Identity.Name, roles = c.Roles(), lastName = c.LName, firstName = c.FName, middleName = c.MName, privs = (int)c.Privs, email = c.Email }, JsonRequestBehavior.AllowGet);
+                        return Json(GetAuthCheckResponse(true, string.Empty, User, c), JsonRequestBehavior.AllowGet);
                     else
-                        return Jsonp(new { success = true, message = "", authenticated = User.Identity.IsAuthenticated, clientId = c.ClientID, username = User.Identity.Name, roles = c.Roles(), lastName = c.LName, firstName = c.FName, middleName = c.MName, privs = (int)c.Privs, email = c.Email }, callback);
+                        return Jsonp(GetAuthCheckResponse(true, string.Empty, User, c), callback);
                 }
 
                 if (string.IsNullOrEmpty(callback))
@@ -173,16 +338,16 @@ namespace Authentication.Controllers
 
                 if (!string.IsNullOrEmpty(ticket.Name))
                 {
-                    c = CacheManager.Current.GetClient(ticket.Name);
+                    c = Provider.Data.Client.GetClient(ticket.Name);
 
                     if (c == null)
                         return Json(new { success = false, message = string.Format("no client found for '{0}'", ticket.Name) });
 
                     //success!
                     if (string.IsNullOrEmpty(callback))
-                        return Json(new { success = true, message = "", authenticated = !ticket.Expired, username = ticket.Name, roles = c.Roles(), lastName = c.LName, firstName = c.FName, email = c.Email, expiration = ticket.Expiration, expired = ticket.Expired });
+                        return Json(GetAuthCheckResponse(true, string.Empty, ticket, c));
                     else
-                        return Jsonp(new { success = true, message = "", authenticated = !ticket.Expired, username = ticket.Name, roles = c.Roles(), lastName = c.LName, firstName = c.FName, email = c.Email, expiration = ticket.Expiration, expired = ticket.Expired }, callback);
+                        return Jsonp(GetAuthCheckResponse(true, string.Empty, ticket, c), callback);
                 }
 
                 if (string.IsNullOrEmpty(callback))
@@ -192,63 +357,40 @@ namespace Authentication.Controllers
             }
         }
 
-        [HttpGet, Route("authorize")]
-        public async Task<ActionResult> Authorize()
+        private static object GetAuthCheckResponse(bool success, string message, IPrincipal user, IClient c)
         {
-            // Set by OAuthProvider to something other than 200 if the request is invalid, for example if client_id is missing from querystring.
-            if (Response.StatusCode != 200)
-                return View("AuthorizeError");
-
-            //var userName = ticket.Identity.Name
-            var userName = User.Identity.Name;
-
-            var c = DA.Current.Query<Client>().FirstOrDefault(x => x.UserName == userName);
-
-            if (c != null)
-                ViewBag.DisplayName = $"{c.FName} {c.LName}";
-            else
-                ViewBag.DisplayName = User.Identity.Name;
-
-            var clientAppService = new ClientAppService();
-            var clientApp = clientAppService.GetClientAppBytId(Request.QueryString["client_id"]);
-
-            return await Task.FromResult(View(clientApp));
+            return new
+            {
+                success,
+                message,
+                authenticated = user.Identity.IsAuthenticated,
+                clientId = c.ClientID,
+                username = user.Identity.Name,
+                roles = c.Roles(),
+                lastName = c.LName,
+                firstName = c.FName,
+                middleName = c.MName,
+                displayName = c.DisplayName,
+                privs = (int)c.Privs,
+                email = c.Email
+            };
         }
 
-        [HttpPost, Route("authorize")]
-        public async Task<ActionResult> Authorize(string grant = null, string login = null)
+        private static object GetAuthCheckResponse(bool success, string message, FormsAuthenticationTicket ticket, IClient c)
         {
-            if (Response.StatusCode != 200)
-                return View("AuthorizeError");
-
-            if (!string.IsNullOrEmpty(grant))
+            return new
             {
-                //var ticket = await authentication.AuthenticateAsync("Application");
-                //var identity = ticket?.Identity;
-                var identity = (FormsIdentity)User.Identity;
-
-                if (identity != null)
-                {
-                    var scopes = (Request.QueryString.Get("scope") ?? "").Split(' ');
-                    var claimsIdentity = new ClaimsIdentity(identity.Claims, "Bearer", identity.NameClaimType, identity.RoleClaimType);
-
-                    foreach (var scope in scopes)
-                        claimsIdentity.AddClaim(new Claim("urn:oauth:scope", scope));
-
-                    Authentication.SignIn(claimsIdentity);
-                }
-            }
-            else if (!string.IsNullOrEmpty(login))
-            {
-                FormsAuthentication.SignOut();
-                Response.Redirect(FormsAuthentication.LoginUrl);
-                return new HttpUnauthorizedResult();
-            }
-
-            var clientAppService = new ClientAppService();
-            var clientApp = clientAppService.GetClientAppBytId(Request.QueryString["client_id"]);
-
-            return await Task.FromResult(View(clientApp));
+                success,
+                message,
+                authenticated = !ticket.Expired,
+                username = ticket.Name,
+                roles = c.Roles(),
+                lastName = c.LName,
+                firstName = c.FName,
+                email = c.Email,
+                expiration = ticket.Expiration,
+                expired = ticket.Expired
+            };
         }
 
         private IHtmlString GetKioskMessage()
@@ -313,7 +455,7 @@ namespace Authentication.Controllers
 
         private string[] GetRoles(IClient client)
         {
-            var privs = ServiceProvider.Current.Data.Client.GetPrivs();
+            var privs = Provider.Data.Client.GetPrivs();
             return privs.Where(x => (x.PrivFlag & client.Privs) > 0).Select(x => x.PrivType).ToArray();
         }
 
@@ -327,6 +469,51 @@ namespace Authentication.Controllers
             };
 
             return result;
+        }
+
+        private LogInResult PasswordResetRequired(HomeModel model, out bool result)
+        {
+            var client = Provider.Data.Client.GetClient(model.UserName);
+
+            if (client == null)
+            {
+                result = false;
+                return LogInResult.Failure("Incorrect username or password.", client);
+            }
+
+            if (!client.ClientActive)
+            {
+                result = false;
+                return LogInResult.Failure("Client is inactive.", client);
+            }
+
+            if (Provider.Data.Client.GetRequirePasswordReset(client.ClientID))
+            {
+                result = true;
+                return LogInResult.Failure("Password reset required.", client);
+            }
+
+            result = false;
+            return model.LogIn();
+        }
+
+        private void AddPasswordResetRequest(IClient client)
+        {
+            IPasswordResetRequest req = Provider.Data.Client.AddPasswordResetRequest(client.ClientID);
+            Provider.Mail.SendMessage(new LNF.Mail.SendMessageArgs
+            {
+                Caller = "Authentication.Controllers.HomeController.Index",
+                ClientID = client.ClientID,
+                Attachments = null,
+                Bcc = LNF.CommonTools.SendEmail.DeveloperEmails,
+                To = new[] { client.Email },
+                From = "lnf-support@umich.edu",
+                DisplayName = "LNF Online Services",
+                IsHtml = true,
+                Cc = null,
+                Subject = $"LNF password reset request [{DateTime.Now:yyyy-MM-dd HH:mm:ss}]",
+                Body = $"Hello {client.FName} {client.LName},<br><br>You have requested a password reset for LNF Online Services. Please use this code to complete the reset: <b>{req.ResetCode}</b> (case sensitive).<br><br>This code expires in 15 minutes. If you did not make this request please contact lnf-support@umich.edu immediately."
+            });
         }
     }
 

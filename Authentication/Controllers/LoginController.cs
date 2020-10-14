@@ -1,5 +1,7 @@
 ﻿using Authentication.Models;
+using LNF;
 using LNF.Scheduler;
+using LNF.Web;
 using Microsoft.AspNet.Identity;
 using Microsoft.Owin.Security;
 using System;
@@ -15,12 +17,26 @@ namespace Authentication.Controllers
     {
         private CustomUserManager _UserManager;
 
+        public ContextHelper Helper { get; private set; }
+
+        public IProvider Provider { get; }
+
+        public LoginController(IProvider provider)
+        {
+            Provider = provider;
+        }
+
+        protected override void OnActionExecuting(ActionExecutingContext filterContext)
+        {
+            Helper = new ContextHelper(HttpContext, Provider);
+        }
+
         public CustomUserManager UserManager
         {
             get
             {
                 if (_UserManager == null)
-                    _UserManager = new CustomUserManager();
+                    _UserManager = new CustomUserManager(Provider);
                 return _UserManager;
             }
         }
@@ -28,6 +44,8 @@ namespace Authentication.Controllers
         [Route("v2")]
         public ActionResult Index(LoginModel model)
         {
+            model.Provider = Provider;
+
             HttpContext.GetOwinContext().Authentication.SignOut(DefaultAuthenticationTypes.ApplicationCookie);
             HttpContext.Response.Cookies.Add(new HttpCookie("sselAuth.Cookie", null) { Path = "/", Domain = ".umich.edu", Expires = DateTime.Now.AddDays(-1) });
 
@@ -39,6 +57,8 @@ namespace Authentication.Controllers
         [HttpPost, Route("v2/auth")]
         public async Task<ActionResult> SignInAsync(LoginModel model)
         {
+            model.Provider = Provider;
+
             IdentityUser user = await UserManager.FindAsync(model.UserName, model.Password);
 
             if (user == null)
@@ -104,18 +124,12 @@ namespace Authentication.Controllers
         {
             var result = string.Empty;
 
-            if (IsKiosk())
+            if (Helper.IsKiosk())
             {
                 var splitter = Request.UserHostAddress.Split('.');
                 result = string.Format("Kiosk #{0}", splitter.LastOrDefault() ?? Request.UserHostAddress);
             }
 
-            return result;
-        }
-
-        public bool IsKiosk()
-        {
-            bool result = KioskUtility.IsKiosk(Request.UserHostAddress) || Request.IsLocal;
             return result;
         }
     }

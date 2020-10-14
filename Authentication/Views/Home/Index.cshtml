@@ -1,19 +1,22 @@
 ﻿@using Authentication.Models;
-@using LNF;
 
 @model HomeModel
 @{
     ViewBag.Title = "LNF Online Services Log In";
     string errmsg = ViewBag.ErrorMessage;
-    bool isprod = ServiceProvider.Current.IsProduction();
+    bool passwordResetRequired = ViewBag.PasswordResetRequired;
+    string passwordResetError = ViewBag.PasswordResetError;
+    bool requestPasswordReset = ViewBag.RequestPasswordReset;
+    bool isHttps = ViewBag.IsHttps;
+    bool isprod = Model.Provider.IsProduction();
 }
 
 @section styles{
-    <link rel="stylesheet" href="@Url.Content("~/Content/login.css")">
+    <link rel="stylesheet" href="@Url.Content("~/Content/login.css?v=20201009")">
 
     <style>
         body {
-            overflow:hidden;
+            overflow: hidden;
         }
 
         .debug {
@@ -66,7 +69,12 @@
                 </div>
             </div>
             <div class="form-group">
-                <div class="col-md-offset-5 col-md-2">
+                <div class="col-md-offset-5 col-md-3">
+                    @Html.ActionLink("Forgot your password?", "RequestPasswordReset", null, new { @class = "kiosk-message" })
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-md-offset-5 col-md-3">
                     <button type="submit" class="login-button btn btn-primary"></button>
                 </div>
             </div>
@@ -89,8 +97,111 @@
                 </div>
             }
         </div>
+
+        <div class="https-message">
+            @if (isHttps)
+            {
+                <img src="~/Content/images/lock-dark.png" style="width: 12px;" />
+            }
+            else
+            {
+                <img src="~/Content/images/unlock-dark.png" style="width: 12px;" />
+            }
+        </div>
     </div>
 </div>
+
+@if (requestPasswordReset)
+{
+    <div class="modal fade" tabindex="-1" role="dialog" id="password-reset-modal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Request Password Reset</h4>
+                </div>
+                @using (Html.BeginForm("RequestPasswordReset", "Home"))
+                {
+                    <div class="modal-body">
+                        <div style="margin-bottom: 10px;">Please enter your username below. A password reset code will be sent to your email address on file.</div>
+                        <div style="margin-bottom: 10px;">If you are not sure which email this is please contact <a href="mailto:lnf-support@umich.edu">lnf-support@umich.edu</a>.</div>
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input type="text" class="form-control" name="username" id="username" />
+                        </div>
+                        @if (!string.IsNullOrEmpty(passwordResetError))
+                        {
+                            <div class="alert alert-danger" role="alert">
+                                @passwordResetError
+                            </div>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        @Html.ActionLink("Cancel", "Index", null, new { @class = "btn btn-default" })
+                        <button type="submit" class="btn btn-primary">Request Reset</button>
+                    </div>
+                }
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+}
+
+@if (passwordResetRequired)
+{
+    <div class="modal fade" tabindex="-1" role="dialog" id="password-reset-modal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Password Reset Required</h4>
+                </div>
+                @using (Html.BeginForm("ResetPassword", "Home"))
+                {
+                <div class="modal-body">
+                    <div style="margin-bottom: 10px;">A password reset code has been sent to your email address on file. Please check your email and enter the code below. The code will expire in 15 minutes. Please verify that your browser does not prepopulate the fields with previously saved username/password. After your password has been changed you will return to the login page and must enter your username and new password to login.</div>
+                    <div style="margin-bottom: 10px;">If you are not sure which email this is please contact <a href="mailto:lnf-support@umich.edu">lnf-support@umich.edu</a>.</div>
+                    <div>
+                        Password requirements:
+                        <ul>
+                            <li>At least 6 characters</li>
+                            <li>Cannot be your previous password</li>
+                            <li>Cannot be your username</li>
+                            <li>Do not use your Umich Kerberos password</li>
+                        </ul>
+                    </div>
+                    <hr />
+                    <div class="form-group">
+                        <label for="ResetCode">Username</label>
+                        <input type="text" class="form-control" name="UserName" id="UserName" value="@Model.UserName" readonly="readonly" autocomplete="off" />
+                    </div>
+                    <div class="form-group">
+                        <label for="ResetCode">Reset Code</label>
+                        <input type="text" class="form-control" name="ResetCode" id="ResetCode" placeholder="Code sent by email (case sensitive)" autocomplete="off" />
+                    </div>
+                    <div class="form-group">
+                        <label for="NewPassword">New Password</label>
+                        <input type="password" class="form-control" name="NewPassword" id="NewPassword" placeholder="6 character minimum" autocomplete="off" />
+                    </div>
+                    <div class="form-group">
+                        <label for="ConfirmPassword">Confirm Password</label>
+                        <input type="password" class="form-control" name="ConfirmPassword" id="ConfirmPassword" placeholder="6 character minimum" autocomplete="off" />
+                    </div>
+                    @if (!string.IsNullOrEmpty(passwordResetError))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @passwordResetError
+                        </div>
+                    }
+                </div>
+                    <div class="modal-footer">
+                        @Html.ActionLink("Cancel", "Index", null, new { @class = "btn btn-default" })
+                        <button type="submit" class="btn btn-primary">Reset Password</button>
+                    </div>
+                }
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+}
 
 <div class="debug" style="display: none;">
     <div class="messages"></div>
@@ -124,6 +235,10 @@
 
         $(".debug-close-button").on("click", function (e) {
             $(".debug").hide();
+        });
+
+        $('#password-reset-modal').modal('show').on('hidden.bs.modal', function (e) {
+            window.location = '@Url.Action("Index")';
         });
     </script>
 }

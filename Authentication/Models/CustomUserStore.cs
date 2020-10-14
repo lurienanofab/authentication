@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
+﻿using Microsoft.AspNet.Identity;
+using System;
 using System.Threading.Tasks;
-using Microsoft.AspNet.Identity;
-using LNF.Repository;
-using LNF.Repository.Data;
 
 namespace Authentication.Models
 {

@@ -119,6 +119,7 @@ body {
         background-image: url(images/lnf-login-screen2.jpg);
         background-repeat: no-repeat;
         background-position-x: center;
+        position: relative;
     }
 
     .login-logo, .login-title {
@@ -138,6 +139,13 @@ body {
     .kiosk-message {
         margin-top: 140px;
         margin-bottom: 20px;
+    }
+
+    .https-message {
+        padding: 0 0 4px 4px;
+        position: absolute;
+        bottom: 0;
+        color: #808080;
     }
 }
 

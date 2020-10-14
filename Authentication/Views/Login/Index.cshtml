@@ -1,12 +1,13 @@
 ﻿@using LNF;
 @using Authentication.Models;
+
 @model LoginModel
 @{
     ViewBag.Title = "LNF Online Services Log In";
 
     string errmsg = ViewBag.ErrorMessage;
 
-    bool isprod = ServiceProvider.Current.IsProduction();
+    bool isprod = Model.Provider.IsProduction();
 }
 
 @section styles {

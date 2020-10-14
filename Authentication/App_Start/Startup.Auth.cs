@@ -1,26 +1,26 @@
-﻿using Microsoft.AspNet.Identity;
+﻿using LNF;
+using Microsoft.AspNet.Identity;
 using Microsoft.Owin;
-using Microsoft.Owin.Security;
 using Microsoft.Owin.Security.Cookies;
 using Microsoft.Owin.Security.OAuth;
 using Owin;
 using System;
 using System.Configuration;
+using System.Threading.Tasks;
+using System.Web;
 
 namespace Authentication
 {
     public partial class Startup
     {
-        public static OAuthAuthorizationServerOptions OAuthOptions { get; private set; }
-
-        static Startup()
+        public static OAuthAuthorizationServerOptions GetServerOptions(IProvider provider)
         {
-            OAuthOptions = new OAuthAuthorizationServerOptions
+            return new OAuthAuthorizationServerOptions
             {
                 AuthorizeEndpointPath = new PathString("/authorize"),
                 TokenEndpointPath = new PathString("/token"),
                 ApplicationCanDisplayErrors = true,
-                Provider = new OAuthProvider(),
+                Provider = new OAuthProvider(provider),
                 AuthorizationCodeProvider = new OAuthAuthorizationCodeProvider(),
                 RefreshTokenProvider = new OAuthRefreshTokenProvider(),
                 AccessTokenExpireTimeSpan = TimeSpan.FromDays(2),
@@ -28,7 +28,7 @@ namespace Authentication
             };
         }
 
-        public void ConfigureAuth(IAppBuilder app)
+        public void ConfigureAuth(IAppBuilder app, IProvider provider)
         {
             bool useAspNetIdenity = true;
 
@@ -48,19 +48,23 @@ namespace Authentication
                 });
             }
 
+            // Checks the querystring for the access_token variable and adds an Authorization header if found.
+            // This must come before app.UseOAuthBearerAuthentication(...) is called.
+            app.Use(OAuthQueryStringAccessTokenAuthentication);
+
             // Also use oauth2 bearer authentication to authorize api requests
             app.UseOAuthBearerAuthentication(new OAuthBearerAuthenticationOptions());
 
             app.UseOAuthAuthorizationServer(new OAuthAuthorizationServerOptions
             {
-                AuthorizeEndpointPath = new PathString("/authorize"),
-                TokenEndpointPath = new PathString("/token"),
+                AuthorizeEndpointPath = new PathString("/oauth/authorize"),
+                TokenEndpointPath = new PathString("/oauth/token"),
                 ApplicationCanDisplayErrors = true,
                 AllowInsecureHttp = AllowInsecure(),
                 AccessTokenExpireTimeSpan = TimeSpan.FromDays(90),
 
                 // Authorization server provider which controls the lifecycle of Authorization Server
-                Provider = new OAuthProvider(),
+                Provider = new OAuthProvider(provider),
 
                 // Authorization code provider which creates and receives the authorization code.
                 AuthorizationCodeProvider = new OAuthAuthorizationCodeProvider(),
@@ -132,11 +136,27 @@ namespace Authentication
 
         private static bool AllowInsecure()
         {
-#if DEBUG
+            // must be true to allow http redirects (e.g. http://lnf-wiki.eecs.umich.edu)
             return true;
-#else
-            return false;
-#endif
+        }
+
+        private async Task OAuthQueryStringAccessTokenAuthentication(IOwinContext context, Func<Task> next)
+        {
+            if (context.Request.QueryString.HasValue)
+            {
+                if (string.IsNullOrWhiteSpace(context.Request.Headers.Get("Authorization")))
+                {
+                    var queryString = HttpUtility.ParseQueryString(context.Request.QueryString.Value);
+                    string token = queryString.Get("access_token");
+
+                    if (!string.IsNullOrWhiteSpace(token))
+                    {
+                        context.Request.Headers.Add("Authorization", new[] { string.Format("Bearer {0}", token) });
+                    }
+                }
+            }
+
+            await next.Invoke();
         }
     }
 }
