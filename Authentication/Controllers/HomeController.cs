@@ -1,5 +1,6 @@
 ﻿using Authentication.Models;
 using LNF;
+using LNF.CommonTools;
 using LNF.Data;
 using LNF.Web;
 using Microsoft.AspNet.Identity;
@@ -21,7 +22,7 @@ namespace Authentication.Controllers
         public const string JWT_COOKIE_NAME = "lnf_token";
         public const string JWT_COOKIE_DOMAIN = ".umich.edu";
 
-        public IProvider Provider { get; private set; }
+        public IProvider Provider { get; }
 
         public HomeController(IProvider provider)
         {
@@ -53,8 +54,7 @@ namespace Authentication.Controllers
         {
             model.Provider = Provider;
 
-            bool passwordResetRequired;
-            LogInResult loginResult = PasswordResetRequired(model, out passwordResetRequired);
+            LogInResult loginResult = PasswordResetRequired(model, out bool passwordResetRequired);
 
             ViewBag.PasswordResetRequired = passwordResetRequired;
             ViewBag.RequestPasswordReset = false;
@@ -148,7 +148,7 @@ namespace Authentication.Controllers
         [HttpPost, Route("password-reset")]
         public ActionResult ResetPassword(PasswordResetModel model)
         {
-            HomeModel homeModel = new HomeModel { Provider = Provider };
+            HomeModel homeModel = new HomeModel { Provider = Provider, UserName = model.UserName };
 
             PrepareViewBag(homeModel);
 
@@ -206,7 +206,7 @@ namespace Authentication.Controllers
                     }
                     else if (util.ConfirmResetCode())
                     {
-                        Provider.Data.Client.SetPassword(util.Client.ClientID, model.NewPassword);
+                        Provider.Data.Client.AuthUtility().SetPassword(util.Client.ClientID, model.NewPassword);
                         Provider.Data.Client.CompletePasswordReset(util.Client.ClientID, model.ResetCode);
                         Provider.Mail.SendMessage(new LNF.Mail.SendMessageArgs
                         {
@@ -215,7 +215,7 @@ namespace Authentication.Controllers
                             Attachments = null,
                             Cc = null,
                             From = "lnf-support@umich.edu",
-                            Bcc = LNF.CommonTools.SendEmail.DeveloperEmails,
+                            Bcc = SendEmail.DeveloperEmails,
                             DisplayName = "LNF Online Services",
                             To = new[] { util.Client.Email },
                             IsHtml = true,
@@ -309,7 +309,7 @@ namespace Authentication.Controllers
             //1) No cookieValue is passed and GET requests are allowed. This is for client-side checking from the browser (i.e. javascript)
             //2) A value is passed for cookieValue and only POST requests are allowed. This is for server-side checking from .NET, PHP, etc. (note: the server side application must be able to see the auth cookie to get it's value - in other words on the same domain)
 
-            IClient c = null;
+            IClient c;
 
             if (string.IsNullOrEmpty(cookieValue))
             {
@@ -493,6 +493,12 @@ namespace Authentication.Controllers
                 return LogInResult.Failure("Password reset required.", client);
             }
 
+            if (Provider.Data.Client.AuthUtility().PasswordResetRequired(client.ClientID))
+            {
+                result = true;
+                return LogInResult.Failure("Password reset required.", client);
+            }
+
             result = false;
             return model.LogIn();
         }
@@ -519,7 +525,7 @@ namespace Authentication.Controllers
 
     public class LogInActionResult : ActionResult
     {
-        private ActionResult _action;
+        private readonly ActionResult _action;
 
         public LogInResult LogInResult { get; private set; }
 

@@ -7,7 +7,8 @@
     bool passwordResetRequired = ViewBag.PasswordResetRequired;
     string passwordResetError = ViewBag.PasswordResetError;
     bool requestPasswordReset = ViewBag.RequestPasswordReset;
-    bool isHttps = ViewBag.IsHttps;
+    bool? httpsCheck = ViewBag.IsHttps;
+    bool isHttps = httpsCheck.GetValueOrDefault(Request.IsSecureConnection);
     bool isprod = Model.Provider.IsProduction();
 }
 
@@ -17,6 +18,13 @@
     <style>
         body {
             overflow: hidden;
+        }
+
+        .set-password a:link,
+        .set-password a:visited,
+        .set-password a:active,
+        .set-password a:hover {
+            color: gold;
         }
 
         .debug {
@@ -69,8 +77,8 @@
                 </div>
             </div>
             <div class="form-group">
-                <div class="col-md-offset-5 col-md-3">
-                    @Html.ActionLink("Forgot your password?", "RequestPasswordReset", null, new { @class = "kiosk-message" })
+                <div class="col-md-offset-5 col-md-3 set-password">
+                    @Html.ActionLink("Set new or reset password", "RequestPasswordReset", null, new { @class = "kiosk-message" })
                 </div>
             </div>
             <div class="form-group">

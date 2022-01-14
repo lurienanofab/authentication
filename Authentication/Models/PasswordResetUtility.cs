@@ -1,12 +1,7 @@
 ﻿using LNF;
 using LNF.CommonTools;
 using LNF.Data;
-using LNF.Repository;
 using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using System.Web;
 
 namespace Authentication.Models
 {
@@ -51,30 +46,7 @@ namespace Authentication.Models
             if (Client == null)
                 throw new Exception("Cannot check for old password. Client is null.");
 
-            var sql = "SELECT [Password], PasswordHash FROM sselData.dbo.Client WHERE ClientID = @ClientID";
-
-            var dt = DefaultDataCommand.Create(CommandType.Text)
-                .Param("ClientID", Client.ClientID)
-                .FillDataTable(sql);
-
-            if (dt.Rows.Count == 0)
-                throw new ItemNotFoundException("Client", "ClientID", Client.ClientID);
-
-            var currentPwd = dt.Rows[0].Field<string>("Password");
-            var hash = dt.Rows[0].Field<string>("PasswordHash");
-
-            if (currentPwd.Length < 64)
-            {
-                // handle old password
-                var enc = new Encryption();
-                var encPwd = enc.EncryptText(pwd);
-                return currentPwd == encPwd;
-            }
-            else
-            {
-                // handle new password
-                return _provider.Data.Client.CheckPassword(Client.ClientID, pwd);
-            }
+            return _provider.Data.Client.AuthUtility().PasswordCheck(Client.ClientID, pwd);
         }
 
         public bool IsPasswordUserName(string pwd)

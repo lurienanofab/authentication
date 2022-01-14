@@ -1,8 +1,6 @@
 ﻿using LNF;
+using LNF.CommonTools;
 using LNF.Data;
-using LNF.Impl;
-using LNF.Impl.Repository.Data;
-using LNF.Repository;
 using Microsoft.AspNet.Identity;
 using System.Linq;
 using System.Security.Claims;
@@ -21,7 +19,7 @@ namespace Authentication.Models
 
         public override Task<IdentityResult> CreateAsync(IdentityUser user)
         {
-            IdentityResult result = null;
+            IdentityResult result;
 
             if (user.Client != null)
             {
@@ -38,7 +36,7 @@ namespace Authentication.Models
         {
             get
             {
-                var query = Provider.Data.Client.GetClients();
+                var query = Provider.Data.Client.GetAllClients();
                 var result = query.Select(x => new IdentityUser(x)).AsQueryable();
                 return result;
             }
@@ -62,12 +60,17 @@ namespace Authentication.Models
 
         public override Task<IdentityUser> FindAsync(string userName, string password)
         {
-            IdentityUser result = null;
+            IdentityUser result;
 
-            var client = Provider.Data.Client.GetClient(userName);
-
-            if (Provider.Data.Client.CheckPassword(client.ClientID, password))
-                result = new IdentityUser(client);
+            try
+            {
+                var client = Provider.Data.Client.AuthUtility().Login(userName, password);
+                result = new IdentityUser(client);                    
+            }
+            catch
+            {
+                result = null;
+            }
 
             // result is null if password check failed...
 
@@ -76,11 +79,12 @@ namespace Authentication.Models
 
         public override Task<IdentityResult> ChangePasswordAsync(int userId, string currentPassword, string newPassword)
         {
-            IdentityResult result = null;
+            IdentityResult result;
 
-            if (Provider.Data.Client.CheckPassword(userId, currentPassword))
+            var auth = Provider.Data.Client.AuthUtility();
+            if (auth.LoginPasswordCheck(userId, currentPassword))
             {
-                Provider.Data.Client.SetPassword(userId, newPassword);
+                auth.SetPassword(userId, newPassword);
                 result = new IdentityResult();
             }
             else

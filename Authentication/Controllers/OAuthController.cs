@@ -1,6 +1,6 @@
 ﻿using Authentication.Models;
+using LNF;
 using LNF.Impl.Repository.Data;
-using LNF.Repository;
 using Microsoft.Owin.Security;
 using System;
 using System.Linq;
@@ -16,6 +16,13 @@ namespace Authentication.Controllers
     {
         public IAuthenticationManager Authentication => HttpContext.GetOwinContext().Authentication;
 
+        public IProvider Provider { get; }
+
+        public OAuthController(IProvider provider)
+        {
+            Provider = provider;
+        }
+
         [Authorize, HttpGet, Route("oauth/authorize")]
         public async Task<ActionResult> Authorize()
         {
@@ -27,7 +34,7 @@ namespace Authentication.Controllers
 
             var userName = User.Identity.Name;
 
-            var c = DA.Current.Query<Client>().FirstOrDefault(x => x.UserName == userName);
+            var c = Provider.DataAccess.Session.Query<Client>().FirstOrDefault(x => x.UserName == userName);
 
             if (c != null)
                 ViewBag.DisplayName = $"{c.FName} {c.LName}";

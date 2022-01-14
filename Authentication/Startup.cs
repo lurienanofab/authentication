@@ -1,9 +1,12 @@
 ﻿using LNF;
+using LNF.Impl.DependencyInjection;
 using LNF.Web;
 using Microsoft.Owin;
 using Owin;
+using System.Linq;
 using System.Net;
 using System.Reflection;
+using System.Web.Compilation;
 using System.Web.Http;
 using System.Web.Mvc;
 using System.Web.Routing;
@@ -19,16 +22,25 @@ namespace Authentication
             //allows self signed cert with https
             ServicePointManager.ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true;
 
-            WebApp.Current.BootstrapMvc(new[] { Assembly.GetExecutingAssembly() });
+            var assemblies = BuildManager.GetReferencedAssemblies().Cast<Assembly>().ToArray();
+
+            // setup up dependency injection container
+            var webapp = new WebApp();
+            var wcc = webapp.GetConfiguration();
+            wcc.Context.EnablePropertyInjection();
+            wcc.RegisterAllTypes();
+
+            // setup web dependency injection
+            webapp.BootstrapMvc(assemblies);
 
             AreaRegistration.RegisterAllAreas();
             RouteConfig.RegisterRoutes(RouteTable.Routes);
             GlobalConfiguration.Configure(WebApiConfig.Register);
 
-            var provider = WebApp.Current.GetInstance<IProvider>();
+            var provider = webapp.Context.GetInstance<IProvider>();
             ConfigureAuth(app, provider);
 
-            app.UseDataAccess();
+            app.UseDataAccess(webapp.Context);
         }
     }
 }

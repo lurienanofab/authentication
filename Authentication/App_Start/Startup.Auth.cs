@@ -17,8 +17,8 @@ namespace Authentication
         {
             return new OAuthAuthorizationServerOptions
             {
-                AuthorizeEndpointPath = new PathString("/authorize"),
-                TokenEndpointPath = new PathString("/token"),
+                AuthorizeEndpointPath = new PathString("/oauth/authorize"),
+                TokenEndpointPath = new PathString("/oauth/token"),
                 ApplicationCanDisplayErrors = true,
                 Provider = new OAuthProvider(provider),
                 AuthorizationCodeProvider = new OAuthAuthorizationCodeProvider(),
@@ -72,66 +72,6 @@ namespace Authentication
                 // Refresh token provider which creates and receives refresh token.
                 RefreshTokenProvider = new OAuthRefreshTokenProvider(),
             });
-        }
-
-        private string GetRedirectUrl(IOwinRequest request)
-        {
-            string result = string.Empty;
-            GetReturnServer(request, ref result);
-            GetReturnUrl(request, ref result);
-            return result;
-        }
-
-        private void GetReturnServer(IOwinRequest request, ref string url)
-        {
-            var returnServer = request.Query.Get("ReturnServer");
-            var host = request.Uri.Host;
-
-            if (string.IsNullOrEmpty(returnServer))
-            {
-                url = ConfigurationManager.AppSettings["DefaultReturnServer"];
-                url = url.Replace("{self}", host);
-            }
-            else
-                url = returnServer;
-
-            if (!string.IsNullOrEmpty(url))
-            {
-                if (!url.StartsWith("http://"))
-                    url = "http://" + url;
-
-                if (!url.EndsWith("/"))
-                    url = url + "/";
-            }
-
-            //at this point url will either be an empty string or something like http://<ReturnServer>/ (with a trailing slash)
-        }
-
-        private void GetReturnUrl(IOwinRequest request, ref string url)
-        {
-            string path = request.Query.Get("ReturnUrl");
-
-            if (string.IsNullOrEmpty(path))
-                path = ConfigurationManager.AppSettings["DefaultReturnUrl"];
-
-            if (string.IsNullOrEmpty(url))
-            {
-                //no server specified
-                if (!path.StartsWith("/"))
-                    url = "/" + path;
-                else
-                    url = path;
-            }
-            else
-            {
-                //server is specified so it will have a trailing slash
-                if (path.StartsWith("/"))
-                    path = path.TrimStart('/');
-
-                url += path;
-            }
-
-            //at this point we should either have a url like http://<ReturnServer>/<ReturnUrl> or /<ReturnUrl>
         }
 
         private static bool AllowInsecure()

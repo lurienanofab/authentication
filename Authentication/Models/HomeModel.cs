@@ -1,7 +1,9 @@
 ﻿using LNF;
 using LNF.Authorization.Credentials;
+using LNF.CommonTools;
 using LNF.Data;
 using LNF.Scheduler;
+using OnlineServices.Api;
 using OnlineServices.Api.Authorization;
 using System;
 using System.Configuration;
@@ -24,7 +26,7 @@ namespace Authentication.Models
 
             try
             {
-                var client = Provider.Data.Client.Login(UserName, Password);
+                var client = Provider.Data.Client.AuthUtility().Login(UserName, Password);
 
                 if (client.ClientActive)
                     result = LogInResult.Successful(client);
@@ -42,7 +44,7 @@ namespace Authentication.Models
 
         public LogInResult ApiLogIn()
         {
-            var svc = new AuthorizationService();
+            var svc = new AuthorizationService(ApiClient.NewRestClient());
 
             LogInResult result;
 
@@ -69,8 +71,8 @@ namespace Authentication.Models
             }
             catch (Exception ex)
             {
-                string msg = ex.Message; // should we do something with this?
-                result = LogInResult.Failure("Invalid username or password.", null);
+                string msg = ex.Message;
+                result = LogInResult.Failure($"Invalid username or password. [{msg}]", null);
             }
 
             return result;

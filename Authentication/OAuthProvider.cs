@@ -1,6 +1,6 @@
 ﻿using Authentication.Models;
 using LNF;
-using LNF.Data;
+using LNF.CommonTools;
 using Microsoft.Owin.Security;
 using Microsoft.Owin.Security.Infrastructure;
 using Microsoft.Owin.Security.OAuth;
@@ -17,7 +17,6 @@ namespace Authentication
     {
         //private readonly UserService userService;
         protected IProvider Provider { get; }
-        protected IClientRepository ClientManager => Provider.Data.Client;
         private readonly ClientAppRepository clientAppRepo;
 
         public OAuthProvider(IProvider provider)
@@ -29,15 +28,13 @@ namespace Authentication
 
         public override Task ValidateClientRedirectUri(OAuthValidateClientRedirectUriContext context)
         {
-            bool validated = false;
-
             var client = clientAppRepo.GetClientAppBytId(context.ClientId);
 
             if (client != null)
             {
                 if (client.Redirects.Contains(context.RedirectUri))
                 {
-                    validated = context.Validated();
+                    _ = context.Validated();
                 }
             }
 
@@ -86,7 +83,9 @@ namespace Authentication
         {
             var username = context.UserName;
             var password = context.Password;
-            var user = ClientManager.Login(username, password);
+
+            var user = Provider.Data.Client.AuthUtility().Login(username, password);
+
             if (user != null)
             {
                 var claims = new List<Claim>
