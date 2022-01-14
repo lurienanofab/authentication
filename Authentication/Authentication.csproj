@@ -191,8 +191,6 @@
   <ItemGroup>
     <Content Include="Content\images\lnf-login-screen2.jpg" />
     <None Include="packages.config" />
-    <None Include="Properties\PublishProfiles\Local.pubxml" />
-    <None Include="Properties\PublishProfiles\Production.pubxml" />
     <Content Include="Content\images\enter-button.jpg" />
     <Content Include="Content\images\lnf-login-screen.jpg" />
     <Content Include="Content\images\lnf-logo-blue-text-transparent.png" />
@@ -237,6 +235,7 @@
     <Content Include="Views\Home\Index.cshtml" />
     <Content Include="Views\OAuth\Authorize.cshtml" />
     <Content Include="Views\OAuth\AuthorizeError.cshtml" />
+    <None Include="Properties\PublishProfiles\Production %28Apps%29.pubxml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
